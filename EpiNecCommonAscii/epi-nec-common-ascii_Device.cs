@@ -7,114 +7,149 @@ using Crestron.SimplSharpPro.DM;
 using EpiNecCommonAscii.ResponseHandling;
 using PepperDash.Core;
 using PepperDash.Essentials.Core;
+using PepperDash.Essentials.Core.Config;
 using PepperDash.Essentials.Core.Routing;
 using PepperDash.Essentials.Core.Bridges;
 
 namespace EpiNecCommonAscii  
 {
 
-	/// <summary>
-	/// Plugin device
-	/// </summary>
-	/// <remarks>
-	/// Rename the class to match the device plugin being developed.
-	/// </remarks>
-	/// <example>
-	/// "EssentialsPluginDeviceTemplate" renamed to "SamsungMdcDevice"
-	/// </example>
-	public class NecCommonAsciiDevice : TwoWayDisplayBase, IBridgeAdvanced
-	{
-		/// <summary>
-		/// It is often desirable to store the config
-		/// </summary>
-		private NecCommonAsciiDeviceConfigObject _config;
+    /// <summary>
+    /// Plugin device
+    /// </summary>
+    /// <remarks>
+    /// Rename the class to match the device plugin being developed.
+    /// </remarks>
+    /// <example>
+    /// "EssentialsPluginDeviceTemplate" renamed to "SamsungMdcDevice"
+    /// </example>
+    public class NecCommonAsciiDevice : TwoWayDisplayBase, IBridgeAdvanced
+    {
+        /// <summary>
+        /// It is often desirable to store the config
+        /// </summary>
+        private NecCommonAsciiDeviceConfigObject _config;
 
-		#region IBasicCommunication Properties and Constructor.
+        #region IBasicCommunication Properties and Constructor.
 
-		// TODO [ ] Add, modify, remove properties and fields as needed for the plugin being developed
-		private readonly IBasicCommunication _comms;
-		private readonly GenericCommunicationMonitor _commsMonitor;
-		
-		// TODO [ ] Delete the properties below if using a HEX/byte based API		
-		// _comms gather is commonly used for ASCII based API's with deelimiters
-		private readonly CommunicationGather _commsGather;
+        // TODO [ ] Add, modify, remove properties and fields as needed for the plugin being developed
+        private readonly IBasicCommunication Comms;
+        private readonly GenericCommunicationMonitor CommsMonitor;
 
-		/// <summary>
-		/// Set this value to that of the delimiter used by the API (if applicable)
-		/// </summary>
-		private const string CommsDelimiter = "\r";
+        // TODO [ ] Delete the properties below if using a HEX/byte based API		
+        // _comms gather is commonly used for ASCII based API's with deelimiters
+        private readonly CommunicationGather _commsGather;
 
-		/// <summary>
-		/// Reports connect feedback through the bridge
-		/// </summary>
-		public BoolFeedback ConnectFeedback { get; private set; }
+        /// <summary>
+        /// Set this value to that of the delimiter used by the API (if applicable)
+        /// </summary>
+        private const string CommsDelimiter = "\r";
 
-		/// <summary>
-		/// Reports online feedback through the bridge
-		/// </summary>
-		public BoolFeedback OnlineFeedback { get; private set; }
+        /// <summary>
+        /// Reports connect feedback through the bridge
+        /// </summary>
+        public BoolFeedback ConnectFeedback { get; private set; }
 
-		/// <summary>
-		/// Reports socket status feedback through the bridge
-		/// </summary>
-		public IntFeedback SocketStatusFeedback { get; private set; }
+        /// <summary>
+        /// Reports online feedback through the bridge
+        /// </summary>
+        public BoolFeedback OnlineFeedback { get; private set; }
 
-		/// <summary>
-		/// Reports monitor status feedback through the bridge
-		/// Typically used for Fusion status reporting and system status LED's
-		/// </summary>
-		public IntFeedback MonitorStatusFeedback { get; private set; }
+        /// <summary>
+        /// Reports socket status feedback through the bridge
+        /// </summary>
+        public IntFeedback SocketStatusFeedback { get; private set; }
 
-        public Dictionary<string,string> InputList { get; private set; }
+        /// <summary>
+        /// Reports monitor status feedback through the bridge
+        /// Typically used for Fusion status reporting and system status LED's
+        /// </summary>
+        public IntFeedback MonitorStatusFeedback { get; private set; }
 
-	    private bool _isWarming;
-	    public bool IsWarming
-	    {
-	        get { return _isWarming; }
-	        private set
-	        {
-	            _isWarming = value;
-	            IsWarmingUpFeedback.FireUpdate();
-	        }
-	    }
+        public IntFeedback LampHoursFeedback { get; private set; }
+        public StringFeedback LampHoursStringFeedback { get; private set; }
 
-	    private bool _isCooling;
+        public Dictionary<string, string> InputList { get; private set; }
 
-	    public bool IsCooling
-	    {
-	        get { return _isCooling; }
-	        private set
-	        {
-	            _isCooling = value;
-	            IsCoolingDownFeedback.FireUpdate();
-	        }
-	    }
+        private bool _isWarming;
 
-	    private bool _powerIsOn;
+        /// <summary>
+        /// 
+        /// </summary>
+        public bool IsWarming
+        {
+            get { return _isWarming; }
+            private set
+            {
+                _isWarming = value;
+                IsWarmingUpFeedback.FireUpdate();
+            }
+        }
 
-	    public bool PowerIsOn
-	    {
+        private bool _isCooling;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public bool IsCooling
+        {
+            get { return _isCooling; }
+            private set
+            {
+                _isCooling = value;
+                IsCoolingDownFeedback.FireUpdate();
+            }
+        }
+
+        private int _lampHours;
+
+        public int LampHours
+        {
+            get { return _lampHours; }
+            set
+            {
+                _lampHours = value;
+                LampHoursFeedback.FireUpdate();
+                LampHoursStringFeedback.FireUpdate();     
+            }
+        }
+
+
+        private bool _powerIsOn;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public bool PowerIsOn
+        {
             get { return _powerIsOn; }
             private set
             {
                 _powerIsOn = value;
                 PowerIsOnFeedback.FireUpdate();
             }
-	    }
+        }
 
-	    private readonly uint _coolingTimeMs;
-	    private readonly uint _warmingTimeMs;
+        private readonly uint _coolingTimeMs;
+        private readonly uint _warmingTimeMs;
 
-	    private int _inputNumber;
+        private int _inputNumber;
 
-	    public int InputNumber
-	    {
-	        get { return _inputNumber; }
-	        set
-	        {
-	            ExecuteSwitch(InputPorts.ElementAt(value).Selector);
-	        }
-	    }
+        /// <summary>
+        /// 
+        /// </summary>
+        public int InputNumber
+        {
+            get { return _inputNumber; }
+            set
+            {
+                _inputNumber = InputNumber;
+                CurrentInputFeedback.FireUpdate();
+            }
+        }
+
+
+
 
 		/// <summary>
 		/// Plugin device constructor
@@ -143,14 +178,16 @@ namespace EpiNecCommonAscii
 
 			_config = config;
 
-			ConnectFeedback = new BoolFeedback(() => _comms.IsConnected);
-			OnlineFeedback = new BoolFeedback(() => _commsMonitor.IsOnline);
-			MonitorStatusFeedback = new IntFeedback(() => (int)_commsMonitor.Status);			
+			ConnectFeedback = new BoolFeedback(() => Comms.IsConnected);
+			OnlineFeedback = new BoolFeedback(() => CommsMonitor.IsOnline);
+			MonitorStatusFeedback = new IntFeedback(() => (int)CommsMonitor.Status);	
+		    LampHoursFeedback = new IntFeedback(() => _lampHours);
+		    LampHoursStringFeedback = new StringFeedback(() => _lampHours.ToString());
 
-			_comms = comms;
-			_commsMonitor = new GenericCommunicationMonitor(this, _comms, _config.PollTimeMs, _config.WarningTimeoutMs, _config.ErrorTimeoutMs, Poll);
+			Comms = comms;
+			CommsMonitor = new GenericCommunicationMonitor(this, Comms, _config.PollTimeMs, _config.WarningTimeoutMs, _config.ErrorTimeoutMs, Poll);
 
-			var socket = _comms as ISocketStatus;
+			var socket = Comms as ISocketStatus;
 			if (socket != null)
 			{
 				// device comms is IP **ELSE** device comms is RS232
@@ -165,7 +202,7 @@ namespace EpiNecCommonAscii
 			#region Communication data event handlers.  Comment out any that don't apply to the API type			
 
 			// _comms gather is commonly used for ASCII based API's that have a defined delimiter
-			_commsGather = new CommunicationGather(_comms, CommsDelimiter);			
+			_commsGather = new CommunicationGather(Comms, CommsDelimiter);			
 			// Event fires when the defined delimter is found
 			_commsGather.LineReceived += Handle_LineRecieved;
 	
@@ -184,9 +221,9 @@ namespace EpiNecCommonAscii
 		public override bool CustomActivate()
 		{
 			// Essentials will handle the connect method to the device                       
-			_comms.Connect();
+			Comms.Connect();
 			// Essentialss will handle starting the comms monitor
-			_commsMonitor.Start();
+			CommsMonitor.Start();
 
 			return base.CustomActivate();
 		}
@@ -205,48 +242,112 @@ namespace EpiNecCommonAscii
 		private void Handle_LineRecieved(object sender, GenericCommMethodReceiveTextArgs args)
 		{
 			// TODO [ ] Implement method 
-            var SplitChar = new char[] {' '};
-		    var DataReceived = args.Text;
-		    var Parts = DataReceived.Split(SplitChar);
+            var splitChar = new char[] {' '};
+		    var dataReceived = args.Text;
+		    var parts = dataReceived.Split(splitChar);
 
-		    if (Parts[0].ToLower().Contains("power"))
-		    {
-		        var HandleResponse = new PowerResponse(new NecAsciiCommand(Parts.ToString());
-		        if (Parts[1].ToLower().Contains("on"))
-		        {
-		            IsWarming = false;
-		            IsCooling = false;
-                    PowerIsOn = true;
-		        }
-		        if (Parts[1].ToLower().Contains("off"))
-		        {
-		            IsWarming = false;
-		            IsCooling = false;
-		            PowerIsOn = true;
-		        }
-                if (Parts[1].ToLower().Contains("warming"))
-                {
-                    IsWarming = true;
-                    IsCooling = false;
-                    PowerIsOn = false;
-                }
-                if (Parts[1].ToLower().Contains("cooling"))
-                {
-                    IsWarming = false;
-                    IsCooling = true;
-                    PowerIsOn = false;
-                }
+		    var responseType = parts[0].ToLower();
+		    var responseValue = parts[1].ToLower();
 
-		        return;
-		    }
-            if(Parts[0])
-
-            
-
-		    Parts = DataReceived.Split(SplitChar);
-
+		    if (responseType.Contains("power")) UpdatePower(responseValue);
+		    if (responseType.Contains("input")) UpdateInput(responseValue);
+            if (responseType.Contains("status")) UpdateStatus(responseValue);
+		    if (responseType.Contains("usage")) UpdateUsage(responseValue);
 
 		}
+
+        private void UpdateUsage(string response)
+        {
+            if (response.Contains("light hours"))
+            {
+                
+            }
+        }
+
+        private void UpdateStatus(string response)
+        {
+            const char splitChar = ';';
+
+            var statusMsg = response.Split(splitChar);
+
+            UpdatePower(statusMsg[0].ToLower());
+        }
+
+	    private void UpdatePower(string response)
+	    {
+            if (response.Contains("on"))
+            {
+                IsWarming = false;
+                IsCooling = false;
+                PowerIsOn = true;
+                return;
+            }
+            if (response.Contains("off"))
+            {
+                IsWarming = false;
+                IsCooling = false;
+                PowerIsOn = true;
+                return;
+            }
+            if (response.Contains("warming"))
+            {
+                IsCooling = false;
+                PowerIsOn = false;
+                IsWarming = true;
+                return;
+            }
+            if (response.Contains("cooling"))
+            {
+                IsWarming = false;
+                PowerIsOn = false;
+                IsCooling = true;
+                return;
+            }
+
+	        if (response.Contains("running"))
+	        {
+                IsWarming = false;
+                IsCooling = false;
+                PowerIsOn = true;
+                return;
+	        }
+
+	        if (response.Contains("standby"))
+	        {
+                IsWarming = false;
+                IsCooling = false;
+                PowerIsOn = true;
+                return;
+	        }
+
+            IsWarming = false;
+            PowerIsOn = false;
+            IsCooling = false;
+	    }
+
+	    private void UpdateInput(string response)
+	    {
+            var newInput = InputPorts.FirstOrDefault(i => i.FeedbackMatchObject.Equals(response));
+
+	        if (newInput == null) return;
+
+	        var inputKey = newInput.Key;
+	        switch (inputKey)
+	        {
+                case RoutingPortNames.HdmiIn:
+                case RoutingPortNames.HdmiIn1:
+	                InputNumber = 1;
+	                break;
+                case RoutingPortNames.HdmiIn2:
+	                InputNumber = 2;
+	                break;
+                case RoutingPortNames.RgbIn:
+	            case RoutingPortNames.RgbIn1:
+	                InputNumber = 3;
+	                break;
+	        }
+           
+	    }
 
 
 		// TODO [ ] Delete the properties below if using a HEX/byte based API
@@ -261,7 +362,7 @@ namespace EpiNecCommonAscii
 		{
 			if (string.IsNullOrEmpty(text)) return;
 
-			_comms.SendText(string.Format("{0}{1}", text, CommsDelimiter));
+			Comms.SendText(string.Format("{0}{1}", text, CommsDelimiter));
 		}
 
 		/// <summary>
@@ -392,7 +493,21 @@ namespace EpiNecCommonAscii
 
 	    protected override Func<string> CurrentInputFeedbackFunc
 	    {
-	        get { throw new NotImplementedException(); }
+	        get { return () =>
+	                         {
+	                             var inputString = "";
+
+	                             switch (InputNumber)
+	                             {
+	                                 case 1:
+	                                     inputString = RoutingPortNames.HdmiIn1;
+	                                     break;
+                                     case 2:
+	                                     inputString = RoutingPortNames.RgbIn1;
+	                                     break;
+	                             }
+	                             return inputString;
+	                         }; }
         }
 
         #endregion TwoWayDisplayBase Implementation
@@ -408,10 +523,13 @@ namespace EpiNecCommonAscii
         /// <param name="bridge"></param>
         public void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
         {
-            LinkDisplayToApi(this, trilist, joinStart, joinMapKey, new EiscApiAdvanced(bridge));
+            var joinMap = new NecCommonAsciiDevicePluginBridgeJoinMap(joinStart);
+            LinkDisplayToApi(this, trilist, joinStart, joinMapKey, new EiscApiAdvanced(_config));
+
+            this.LampHoursFeedback.LinkInputSig(trilist.UShortInput[joinMap.LampHours.JoinNumber]);
+            this.LampHoursStringFeedback.LinkInputSig(trilist.StringInput[joinMap.LampHours.JoinNumber]);
         }
 
         #endregion
     }
 }
-

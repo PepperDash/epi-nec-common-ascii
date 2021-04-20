@@ -110,6 +110,23 @@ namespace EpiNecCommonAscii
 				JoinType = eJoinType.Analog
 			});
 
+        /// <summary>
+        /// Report Lamp Hours
+        /// </summary>
+        [JoinName("LampHours")]
+        public JoinDataComplete LampHours = new JoinDataComplete(
+            new JoinData
+            {
+                JoinNumber = 5,
+                JoinSpan = 1
+            },
+            new JoinMetadata
+            {
+                Description = "Lamp Hours",
+                JoinCapabilities = eJoinCapabilities.ToSIMPL,
+                JoinType = eJoinType.AnalogSerial
+            });
+
 		#endregion
 
 
@@ -136,6 +153,14 @@ namespace EpiNecCommonAscii
 				JoinCapabilities = eJoinCapabilities.ToSIMPL,
 				JoinType = eJoinType.Serial
 			});
+
+        /// <summary>
+        /// Plugin device name
+        /// </summary>
+        /// <remarks>
+        /// Reports the plugin name, as read from the configuration file, to SiMPL as a string value.
+        /// </remarks>
+
 
 		#endregion
 

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using Newtonsoft.Json;
 using PepperDash.Essentials.Core;
+using PepperDash.Essentials.Core.Config;
 
 namespace EpiNecCommonAscii
 {
@@ -63,7 +64,7 @@ namespace EpiNecCommonAscii
 	/// </code>
 	/// </example>
 	[ConfigSnippet("{\"devices\":[{\"key\":\"essentialsPluginKey\",\"name\":\"Essentials Plugin Name\",\"type\":\"essentialsPluginTypeName\",\"group\":\"pluginDevices\",\"properties\":{\"control\":{\"method\":\"PepperDash.Core.eControlMethod\",\"controlPortDevKey\":\"exampleControlPortDevKey\",\"controlPortNumber\":1,\"comParams\":{\"baudRate\":9600,\"dataBits\":8,\"stopBits\":1,\"parity\":\"None\",\"protocol\":\"RS232\",\"hardwareHandshake\":\"None\",\"softwareHandshake\":\"None\"},\"tcpSshProperties\":{\"address\":\"172.22.0.101\",\"port\":22,\"username\":\"admin\",\"password\":\"password\",\"autoReconnect\":true,\"autoReconnectIntervalMs\":10000}},\"pollTimeMs\":30000,\"warningTimeoutMs\":180000,\"errorTimeoutMs\":300000,\"pluginCollection\":{\"item1\":{\"name\":\"Item 1\",\"value\":1},\"item2\":{\"name\":\"Item 2\",\"value\":2}}}}]}")]
-	public class NecCommonAsciiDeviceConfigObject
+	public class NecCommonAsciiDeviceConfigObject : DeviceConfig
 	{
 		/// <summary>
 		/// JSON control object

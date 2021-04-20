@@ -106,9 +106,6 @@
     <Compile Include="epi-nec-common-ascii_Device.cs" />
     <Compile Include="epi-nec-common-ascii_Factory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ResponseHandling\AVMuteResponse.cs" />
-    <Compile Include="ResponseHandling\InputResponse.cs" />
-    <Compile Include="ResponseHandling\PowerResponse.cs" />
     <Compile Include="ResponseHandling\Response.cs" />
     <None Include="Properties\ControlSystem.cfg" />
   </ItemGroup>

@@ -185,7 +185,8 @@ namespace EpiNecCommonAscii
 		    LampHoursStringFeedback = new StringFeedback(() => _lampHours.ToString());
 
 			Comms = comms;
-			CommsMonitor = new GenericCommunicationMonitor(this, Comms, _config.PollTimeMs, _config.WarningTimeoutMs, _config.ErrorTimeoutMs, Poll);
+
+			CommsMonitor = new GenericCommunicationMonitor(this, Comms, 20000, 120000, 300000, Poll);
 
 			var socket = Comms as ISocketStatus;
 			if (socket != null)
@@ -524,7 +525,7 @@ namespace EpiNecCommonAscii
         public void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
         {
             var joinMap = new NecCommonAsciiDevicePluginBridgeJoinMap(joinStart);
-            LinkDisplayToApi(this, trilist, joinStart, joinMapKey, new EiscApiAdvanced(_config));
+            LinkDisplayToApi(this, trilist, joinStart, joinMapKey, bridge);
 
             this.LampHoursFeedback.LinkInputSig(trilist.UShortInput[joinMap.LampHours.JoinNumber]);
             this.LampHoursStringFeedback.LinkInputSig(trilist.StringInput[joinMap.LampHours.JoinNumber]);

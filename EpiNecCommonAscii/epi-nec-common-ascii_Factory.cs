@@ -39,7 +39,7 @@ namespace EpiNecCommonAscii
 		{
 			// Set the minimum Essentials Framework Version
 			// TODO [ ] Update the Essentials minimum framework version which this plugin has been tested against
-			MinimumEssentialsFrameworkVersion = "1.6.5";
+			MinimumEssentialsFrameworkVersion  = "1.6.5";
 
 			// In the constructor we initialize the list with the typenames that will build an instance of this device
 			// only include unique typenames, when the constructur is used all the typenames will be evaluated in lower case.
@@ -65,7 +65,6 @@ namespace EpiNecCommonAscii
 				Debug.Console(0, new string('*', 80));
 				Debug.Console(0, "[{0}] Factory Attempting to create new device from type: {1}", dc.Key, dc.Type);				
 				
-				// get the plugin device properties configuration object & check for null 
 				var propertiesConfig = dc.Properties.ToObject<NecCommonAsciiDeviceConfigObject>();
 				if (propertiesConfig == null)
 				{

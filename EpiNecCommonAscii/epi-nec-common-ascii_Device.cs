@@ -174,6 +174,7 @@ namespace EpiNecCommonAscii
                {RoutingPortNames.HdmiIn2,   "hdmi2"},
                {RoutingPortNames.RgbIn,    "computer"},
                {RoutingPortNames.RgbIn1,   "computer"}      
+
 		    };
 
 			_config = config;

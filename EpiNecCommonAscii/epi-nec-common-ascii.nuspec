@@ -2,10 +2,10 @@
 <package >
   <metadata>
     <!-- Update ID with a plugin ID representative of the plugin being built-->
-    <id>epi-nec-common-ascii</id>
+    <id>PepperDash.Essentials.Plugin.NecCommonAscii</id>
     <version>1.0.0</version>
     <!-- Update Title with the plugin name that users will see-->
-    <title>EPI NEC Common ASCII</title>
+    <title>NEC Common ASCII</title>
     <authors>PepperDash Technologies</authors>
     <owners>pepperdash</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>

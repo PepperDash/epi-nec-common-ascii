@@ -66,16 +66,14 @@ namespace EpiNecCommonAscii
         /// </summary>
         public IntFeedback MonitorStatusFeedback { get; private set; }
 
+		#endregion IBasicCommunication Properties and Constructor.
+
         public IntFeedback LampHoursFeedback { get; private set; }
         public StringFeedback LampHoursStringFeedback { get; private set; }
 
         public Dictionary<string, string> InputList { get; private set; }
 
         private bool _isWarming;
-
-        /// <summary>
-        /// 
-        /// </summary>
         public bool IsWarming
         {
             get { return _isWarming; }
@@ -87,10 +85,6 @@ namespace EpiNecCommonAscii
         }
 
         private bool _isCooling;
-
-        /// <summary>
-        /// 
-        /// </summary>
         public bool IsCooling
         {
             get { return _isCooling; }
@@ -102,7 +96,6 @@ namespace EpiNecCommonAscii
         }
 
         private int _lampHours;
-
         public int LampHours
         {
             get { return _lampHours; }
@@ -114,12 +107,7 @@ namespace EpiNecCommonAscii
             }
         }
 
-
         private bool _powerIsOn;
-
-        /// <summary>
-        /// 
-        /// </summary>
         public bool PowerIsOn
         {
             get { return _powerIsOn; }
@@ -134,10 +122,6 @@ namespace EpiNecCommonAscii
         private readonly uint _warmingTimeMs;
 
         private int _inputNumber;
-
-        /// <summary>
-        /// 
-        /// </summary>
         public int InputNumber
         {
             get { return _inputNumber; }
@@ -148,18 +132,31 @@ namespace EpiNecCommonAscii
             }
         }
 
+		public BoolFeedback VideoMuteIsOnFeedBack;
+		private bool _VideoMuteState;
+		public bool VideoMuteState
+		{
+			get { return _VideoMuteState; }
+            private set
+            {
+                _VideoMuteState = value;
+                VideoMuteIsOnFeedBack.FireUpdate();
+            }
+		}
 
-
-
-		/// <summary>
-		/// Plugin device constructor
-		/// </summary>
-		/// <param name="key">device key</param>
-		/// <param name="name">device name</param>
-		/// <param name="config">device configuration object</param>
-		/// <param name="comms">device communication as IBasicCommunication</param>
-		/// <see cref="PepperDash.Core.IBasicCommunication"/>
-		/// <seealso cref="Crestron.SimplSharp.CrestronSockets.SocketStatus"/>
+		public BoolFeedback FreezeImageIsOnFeedBack;
+		private bool _FreezeImageState;
+		public bool FreezeImageState
+		{
+			get { return _FreezeImageState; }
+			private set
+			{
+				_FreezeImageState = value;
+				FreezeImageIsOnFeedBack.FireUpdate();
+			}
+		}
+		private int PollState = 0;
+	
 		public NecCommonAsciiDevice(string key, string name, NecCommonAsciiDeviceConfigObject config, IBasicCommunication comms)
 			: base(key, name)
 		{
@@ -184,6 +181,8 @@ namespace EpiNecCommonAscii
 			MonitorStatusFeedback = new IntFeedback(() => (int)CommsMonitor.Status);	
 		    LampHoursFeedback = new IntFeedback(() => _lampHours);
 		    LampHoursStringFeedback = new StringFeedback(() => _lampHours.ToString());
+			VideoMuteIsOnFeedBack = new BoolFeedback(() => _VideoMuteState);
+
 
 			Comms = comms;
 
@@ -238,9 +237,7 @@ namespace EpiNecCommonAscii
 			if (SocketStatusFeedback != null)
 				SocketStatusFeedback.FireUpdate();
 		}
-
-		// TODO [ ] Delete the properties below if using a HEX/byte based API
-		// commonly used with ASCII based API's with a defined delimiter				
+		
 		private void Handle_LineRecieved(object sender, GenericCommMethodReceiveTextArgs args)
 		{
 			// TODO [ ] Implement method 
@@ -255,7 +252,28 @@ namespace EpiNecCommonAscii
 		    if (responseType.Contains("input")) UpdateInput(responseValue);
             if (responseType.Contains("status")) UpdateStatus(responseValue);
 		    if (responseType.Contains("usage")) UpdateUsage(responseValue);
-
+			if (responseType.Contains("shutter"))
+			{
+				if (responseValue.Contains("open"))
+				{
+					VideoMuteState = false;
+				}
+				else if (responseValue.Contains("closed"))
+				{
+					VideoMuteState = true;
+				}
+			}
+			if (responseType.Contains("freeze"))
+			{
+				if (responseValue.Contains("off"))
+				{
+					FreezeImageState = false;
+				}
+				else if (responseValue.Contains("on"))
+				{
+					FreezeImageState = true;
+				}
+			}
 		}
 
         private void UpdateUsage(string response)
@@ -350,16 +368,7 @@ namespace EpiNecCommonAscii
 	        }
            
 	    }
-
-
-		// TODO [ ] Delete the properties below if using a HEX/byte based API
-		/// <summary>
-		/// Sends text to the device plugin comms
-		/// </summary>
-		/// <remarks>
-		/// Can be used to test commands with the device plugin using the DEVPROPS and DEVJSON console commands
-		/// </remarks>
-		/// <param name="text">Command to be sent</param>		
+	
 		public void SendText(string text)
 		{
 			if (string.IsNullOrEmpty(text)) return;
@@ -375,14 +384,23 @@ namespace EpiNecCommonAscii
 		/// </remarks>
 		public void Poll()
 		{
-			// TODO [ ] Update Poll method as needed for the plugin being developed
-			// Example: SendText("getStatus");
-			
-            SendText("status");
+			switch (PollState)
+			{
+				case 0: 
+					PowerPoll();
+					break;
+				case 1: 
+					InputPoll();
+					break;
+				case 2:
+					VideoMutPoll();
+					break;
+				default:
+					PollState = 0;
+					return;
+			}
+			PollState++; 
 		}
-
-		#endregion IBasicCommunication Properties and Constructor.
-
 
 	    private void AddRoutingInputPort(RoutingInputPort port, string fbMatch)
 	    {
@@ -396,11 +414,6 @@ namespace EpiNecCommonAscii
 	        AddRoutingInputPort(new RoutingInputPort(RoutingPortNames.RgbIn1, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Rgb, new Action(() => InputSelect(new NecAsciiCommand(RoutingPortNames.RgbIn1))), this), InputList[RoutingPortNames.RgbIn1]);
 	    }
 
-
-	    /// <summary>
-	    /// 
-	    /// </summary>
-	    /// <param name="command"></param>
 	    public void InputSelect(NecAsciiCommand command)
 	    {
 	        if (command == null) return;
@@ -410,52 +423,9 @@ namespace EpiNecCommonAscii
 	        if (commandString == string.Empty ||!InputList.ContainsKey(commandString)) return;
 
             SendText(string.Format("input {0}",InputList[commandString]));
+			InputPoll();
 	    }
-
-	    #region TwoWayDisplayBase Implementation
-
-
-        public override void PowerOn()
-        {
-            if (PowerIsOn || IsWarming || IsCooling) return;
-
-            IsWarming = true;
-
-	        SendText("power on");
-            WarmupTimer = new CTimer(o =>
-                                             {
-                                                 IsWarming = false;
-                                                 PowerIsOn = true;
-                                             }, _warmingTimeMs);
-        }
-
-	    public override void PowerOff()
-	    {
-	        if (!PowerIsOn || IsWarming || IsCooling) return;
-
-	        IsCooling = true;
-
-            SendText("power off");
-
-	        PowerIsOn = false;
-            //Set Input to clear
-            CooldownTimer = new CTimer(o =>
-                                           {
-                                               IsCooling = false;
-                                           }, _coolingTimeMs);
-	    }
-
-	    public override void PowerToggle()
-	    {
-	        if (PowerIsOn)
-	        {
-	            PowerOff();
-	            return;
-	        }
-            PowerOn();
-	    }
-
-	    public override void ExecuteSwitch(object selector)
+		public override void ExecuteSwitch(object selector)
 	    {
 	        if (!(selector is Action))
 	            return;
@@ -478,51 +448,178 @@ namespace EpiNecCommonAscii
 	        PowerOn();
 	    }
 
-	    protected override Func<bool> PowerIsOnFeedbackFunc
-	    {
-	        get { return () => PowerIsOn; }
-	    }
+		public void InputPoll()
+		{
+			SendText("input");
+		}
+		protected override Func<bool> PowerIsOnFeedbackFunc
+		{
+			get { return () => PowerIsOn; }
+		}
 
-	    protected override Func<bool> IsCoolingDownFeedbackFunc
-	    {
-	        get { return () => IsCooling; }
-	    }
+		protected override Func<bool> IsCoolingDownFeedbackFunc
+		{
+			get { return () => IsCooling; }
+		}
 
-	    protected override Func<bool> IsWarmingUpFeedbackFunc
-	    {
-	        get { return () => IsWarming; }
-	    }
+		protected override Func<bool> IsWarmingUpFeedbackFunc
+		{
+			get { return () => IsWarming; }
+		}
 
-	    protected override Func<string> CurrentInputFeedbackFunc
-	    {
-	        get { return () =>
-	                         {
-	                             var inputString = "";
+		protected override Func<string> CurrentInputFeedbackFunc
+		{
+			get
+			{
+				return () =>
+				{
+					var inputString = "";
 
-	                             switch (InputNumber)
-	                             {
-	                                 case 1:
-	                                     inputString = RoutingPortNames.HdmiIn1;
-	                                     break;
-                                     case 2:
-	                                     inputString = RoutingPortNames.RgbIn1;
-	                                     break;
-	                             }
-	                             return inputString;
-	                         }; }
+					switch (InputNumber)
+					{
+						case 1:
+							inputString = RoutingPortNames.HdmiIn1;
+							break;
+						case 2:
+							inputString = RoutingPortNames.RgbIn1;
+							break;
+					}
+					return inputString;
+
+				};
+			}
+		}
+
+	    #region Commands
+
+		/// <summary>
+		/// 
+		/// </summary>
+        public override void PowerOn()
+        {
+            if (PowerIsOn || IsWarming || IsCooling) return;
+
+	        SendText("power on");
+			
+			PowerPoll();
         }
 
-        #endregion TwoWayDisplayBase Implementation
+		/// <summary>
+		/// 
+		/// </summary>
+	    public override void PowerOff()
+	    {
+	        if (!PowerIsOn || IsWarming || IsCooling) return;
+
+            SendText("power off");
+
+	        PowerIsOn = false;
+			
+			PowerPoll();
+	    }
+
+		/// <summary>
+		/// 
+		/// </summary>
+	    public override void PowerToggle()
+	    {
+	        if (PowerIsOn)
+	        {
+	            PowerOff();
+	            return;
+	        }
+            PowerOn();
+	    }
+		
+		/// <summary>
+		/// 
+		/// </summary>
+		public void PowerPoll()
+		{
+			SendText("power");
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public void VideoMuteOn()
+        {
+	        SendText("shutter close");
+			VideoMutPoll();
+        }
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public void VideoMuteOff()
+        {
+	        SendText("shutter open");
+			VideoMutPoll();
+        }
+		/// <summary>
+		/// 
+		/// </summary>
+		public void VideoMuteToggle()
+		{
+			if(VideoMuteState)
+				VideoMuteOff();
+			else 
+				VideoMuteOn();
+		}
+		/// <summary>
+		/// 
+		/// </summary>
+		public void VideoMutPoll()
+		{
+			SendText("shutter");
+		}
+		/// <summary>
+		/// 
+		/// </summary>
+		public void FreezeImageOn()
+		{
+			SendText("freeze on");
+			FreezeImagePoll();
+		}
+		public void FreezeImageOff()
+		{
+			SendText("freeze off");
+			FreezeImagePoll();
+		}
+		public void FreezeImageToggle()
+		{
+			if (FreezeImageState)
+				FreezeImageOff();
+			else
+				FreezeImageOn();
+		}
+		public void FreezeImagePoll()
+		{
+			SendText("freeze");
+		}
+		public void LensFunction(eLensFunction function) 
+		{
+			switch (function)
+			{
+				case eLensFunction.ZoomIn: SendText("lens zoom start +"); break;
+				case eLensFunction.ZoomOut: SendText("lens zoom start -"); break;
+				case eLensFunction.ZoomStop: SendText("lens zoom stop"); break;
+				case eLensFunction.FocusIn: SendText("lens focus start +"); break;
+				case eLensFunction.FocusOut: SendText("lens focus start -"); break;
+				case eLensFunction.FocusStop: SendText("lens focus stop"); break;
+				case eLensFunction.HShiftPlus: SendText("lens h_shift start +"); break;
+				case eLensFunction.HShiftMinus: SendText("lens h_shift start -"); break;
+				case eLensFunction.HShiftStop: SendText("lens h_shift stop"); break;
+				case eLensFunction.VShiftPlus: SendText("lens v_shift start +"); break;
+				case eLensFunction.VShiftMinus: SendText("lens v_shift start -"); break;
+				case eLensFunction.VShiftStop: SendText("lens v_shift stop"); break;
+				case eLensFunction.Home: SendText("lens home"); break;
+			}	
+		}
+        #endregion Commands 
 
         #region IBridgeAdvanced Members
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="trilist"></param>
-        /// <param name="joinStart"></param>
-        /// <param name="joinMapKey"></param>
-        /// <param name="bridge"></param>
+		
         public void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
         {
             var joinMap = new NecCommonAsciiDevicePluginBridgeJoinMap(joinStart);
@@ -534,4 +631,20 @@ namespace EpiNecCommonAscii
 
         #endregion
     }
+	public enum eLensFunction
+	{
+		ZoomIn,
+		ZoomOut,
+		ZoomStop,
+		FocusIn,
+		FocusOut,
+		FocusStop,
+		HShiftPlus,
+		HShiftMinus,
+		HShiftStop, 
+		VShiftPlus, 
+		VShiftMinus,
+		VShiftStop,
+		Home
+	}
 }

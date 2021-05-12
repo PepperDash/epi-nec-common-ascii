@@ -19,22 +19,7 @@ namespace EpiNecCommonAscii
 	/// </example>
 	public class NecCommonAsciiDevicePluginFactory : EssentialsPluginDeviceFactory<NecCommonAsciiDevice>
 	{
-		/// <summary>
-		/// Plugin device factory constructor
-		/// </summary>
-		/// <remarks>
-		/// Update the MinimumEssentialsFrameworkVersion & TypeNames as needed when creating a plugin
-		/// </remarks>
-		/// <example>
-		/// Set the minimum Essentials Framework Version
-		/// <code>
-		///  MinimumEssentialsFrameworkVersion = "1.5.5";
-		/// </code>
-		/// In the constructor we initialize the list with the typenames that will build an instance of this device
-		/// <code>
-		/// TypeNames = new List<string>() { "SamsungMdc", "SamsungMdcDisplay" };
-		/// </code>
-		/// </example>
+
 		public NecCommonAsciiDevicePluginFactory()
 		{
 			// Set the minimum Essentials Framework Version

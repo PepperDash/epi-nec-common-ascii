@@ -601,11 +601,11 @@ namespace EpiNecCommonAscii
 		{
 			switch (function)
 			{
-				case eLensFunction.ZoomIn: SendText("lens zoom start +"); break;
-				case eLensFunction.ZoomOut: SendText("lens zoom start -"); break;
+				case eLensFunction.ZoomPlus: SendText("lens zoom start +"); break;
+				case eLensFunction.ZoomMinus: SendText("lens zoom start -"); break;
 				case eLensFunction.ZoomStop: SendText("lens zoom stop"); break;
-				case eLensFunction.FocusIn: SendText("lens focus start +"); break;
-				case eLensFunction.FocusOut: SendText("lens focus start -"); break;
+				case eLensFunction.FocusPlus: SendText("lens focus start +"); break;
+				case eLensFunction.FocusMinus: SendText("lens focus start -"); break;
 				case eLensFunction.FocusStop: SendText("lens focus stop"); break;
 				case eLensFunction.HShiftPlus: SendText("lens h_shift start +"); break;
 				case eLensFunction.HShiftMinus: SendText("lens h_shift start -"); break;
@@ -627,17 +627,69 @@ namespace EpiNecCommonAscii
 
             this.LampHoursFeedback.LinkInputSig(trilist.UShortInput[joinMap.LampHours.JoinNumber]);
             this.LampHoursStringFeedback.LinkInputSig(trilist.StringInput[joinMap.LampHours.JoinNumber]);
+			
+			trilist.SetSigTrueAction(joinMap.Freeze.JoinNumber, () => FreezeImageToggle());
+			FreezeImageIsOnFeedBack.LinkInputSig(trilist.BooleanInput[joinMap.Freeze.JoinNumber]);
+
+			trilist.SetSigTrueAction(joinMap.VideoMuteOn.JoinNumber, () => VideoMuteOn());
+			trilist.SetSigTrueAction(joinMap.VideoMuteOff.JoinNumber, () => VideoMuteOff());
+			trilist.SetSigTrueAction(joinMap.VideoMuteToggle.JoinNumber, () => VideoMuteToggle());
+			VideoMuteIsOnFeedBack.LinkInputSig(trilist.BooleanInput[joinMap.VideoMuteOn.JoinNumber]);
+			VideoMuteIsOnFeedBack.LinkInputSig(trilist.BooleanInput[joinMap.VideoMuteToggle.JoinNumber]);
+			VideoMuteIsOnFeedBack.LinkComplementInputSig(trilist.BooleanInput[joinMap.VideoMuteOff.JoinNumber]);
+
+			trilist.SetBoolSigAction(joinMap.HShiftPlus.JoinNumber, (b) =>
+				{
+					if (b) LensFunction(eLensFunction.HShiftPlus);
+					else LensFunction(eLensFunction.HShiftStop);
+				});
+			trilist.SetBoolSigAction(joinMap.HShiftMinus.JoinNumber, (b) =>
+			{
+				if (b) LensFunction(eLensFunction.HShiftMinus);
+				else LensFunction(eLensFunction.HShiftStop);
+			});
+			trilist.SetBoolSigAction(joinMap.VShiftPlus.JoinNumber, (b) =>
+			{
+				if (b) LensFunction(eLensFunction.VShiftPlus);
+				else LensFunction(eLensFunction.VShiftStop);
+			});
+			trilist.SetBoolSigAction(joinMap.VShiftMinus.JoinNumber, (b) =>
+			{
+				if (b) LensFunction(eLensFunction.VShiftMinus);
+				else LensFunction(eLensFunction.VShiftStop);
+			});
+			trilist.SetBoolSigAction(joinMap.ZoomPlus.JoinNumber, (b) =>
+			{
+				if (b) LensFunction(eLensFunction.ZoomPlus);
+				else LensFunction(eLensFunction.ZoomStop);
+			});
+			trilist.SetBoolSigAction(joinMap.ZoomMinus.JoinNumber, (b) =>
+			{
+				if (b) LensFunction(eLensFunction.ZoomMinus);
+				else LensFunction(eLensFunction.ZoomStop);
+			});
+			trilist.SetBoolSigAction(joinMap.FocusPlus.JoinNumber, (b) =>
+			{
+				if (b) LensFunction(eLensFunction.FocusPlus);
+				else LensFunction(eLensFunction.FocusStop);
+			});
+			trilist.SetBoolSigAction(joinMap.FocusMinus.JoinNumber, (b) =>
+			{
+				if (b) LensFunction(eLensFunction.FocusMinus);
+				else LensFunction(eLensFunction.FocusStop);
+			});
+
         }
 
         #endregion
     }
 	public enum eLensFunction
 	{
-		ZoomIn,
-		ZoomOut,
+		ZoomPlus,
+		ZoomMinus,
 		ZoomStop,
-		FocusIn,
-		FocusOut,
+		FocusPlus,
+		FocusMinus,
 		FocusStop,
 		HShiftPlus,
 		HShiftMinus,

@@ -88,13 +88,13 @@ namespace EpiNecCommonAscii
 		public JoinDataComplete Freeze = new JoinDataComplete(new JoinData { JoinNumber = 37, JoinSpan = 1 },
 			new JoinMetadata { Description = "Freeze", JoinCapabilities = eJoinCapabilities.ToFromSIMPL, JoinType = eJoinType.Digital });
 		[JoinName("VideoMuteOff")]
-		public JoinDataComplete VideoMuteOff = new JoinDataComplete(new JoinData { JoinNumber = 5, JoinSpan = 1 },
-			new JoinMetadata { Description = "VideoMuteOn", JoinCapabilities = eJoinCapabilities.ToFromSIMPL, JoinType = eJoinType.Digital });
-		[JoinName("VideoMuteOn")]
-		public JoinDataComplete VideoMuteOn = new JoinDataComplete(new JoinData { JoinNumber = 6, JoinSpan = 1 },
+		public JoinDataComplete VideoMuteOff = new JoinDataComplete(new JoinData { JoinNumber = 21, JoinSpan = 1 },
 			new JoinMetadata { Description = "VideoMuteOff", JoinCapabilities = eJoinCapabilities.ToFromSIMPL, JoinType = eJoinType.Digital });
+		[JoinName("VideoMuteOn")]
+		public JoinDataComplete VideoMuteOn = new JoinDataComplete(new JoinData { JoinNumber = 22, JoinSpan = 1 },
+			new JoinMetadata { Description = "VideoMuteOn", JoinCapabilities = eJoinCapabilities.ToFromSIMPL, JoinType = eJoinType.Digital });
 		[JoinName("VideoMuteToggle")]
-		public JoinDataComplete VideoMuteToggle = new JoinDataComplete(new JoinData { JoinNumber = 7, JoinSpan = 1 },
+		public JoinDataComplete VideoMuteToggle = new JoinDataComplete(new JoinData { JoinNumber = 23, JoinSpan = 1 },
 			new JoinMetadata { Description = "VideoMuteToggle", JoinCapabilities = eJoinCapabilities.ToFromSIMPL, JoinType = eJoinType.Digital });
 		[JoinName("VShiftPlus")]
 		public JoinDataComplete VShiftPlus = new JoinDataComplete(new JoinData { JoinNumber = 40, JoinSpan = 1 },

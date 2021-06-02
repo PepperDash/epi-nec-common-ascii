@@ -1,8 +1,8 @@
 ﻿using System.Reflection;
 
-[assembly: AssemblyTitle("EssentialsPluginTemplate")]
+[assembly: AssemblyTitle("NecCommonAscii")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("EssentialsPluginTemplate")]
+[assembly: AssemblyProduct("NecCommonAscii")]
 [assembly: AssemblyCopyright("Copyright ©  2020")]
 [assembly: AssemblyVersion("1.0.0.*")]
 [assembly: AssemblyInformationalVersion("0.0.0-buildType-build#")]

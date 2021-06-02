@@ -128,9 +128,13 @@ namespace EpiNecCommonAscii
             set
             {
                 _inputNumber = InputNumber;
-                CurrentInputFeedback.FireUpdate();
+				CurrentInputFeedback.FireUpdate();
+				UpdateBooleanFeedback();
+				InputNumberFeedback.FireUpdate();
             }
         }
+		public List<BoolFeedback> InputFeedback;
+		public IntFeedback InputNumberFeedback;
 
 		public BoolFeedback VideoMuteIsOnFeedBack;
 		private bool _VideoMuteState;
@@ -173,7 +177,7 @@ namespace EpiNecCommonAscii
                {RoutingPortNames.RgbIn1,   "computer"}      
 
 		    };
-
+			InitializeRoutingInputPorts();
 			_config = config;
 
 			ConnectFeedback = new BoolFeedback(() => Comms.IsConnected);
@@ -182,7 +186,8 @@ namespace EpiNecCommonAscii
 		    LampHoursFeedback = new IntFeedback(() => _lampHours);
 		    LampHoursStringFeedback = new StringFeedback(() => _lampHours.ToString());
 			VideoMuteIsOnFeedBack = new BoolFeedback(() => _VideoMuteState);
-
+			FreezeImageIsOnFeedBack = new BoolFeedback(() => _FreezeImageState);
+			
 
 			Comms = comms;
 
@@ -241,37 +246,41 @@ namespace EpiNecCommonAscii
 		private void Handle_LineRecieved(object sender, GenericCommMethodReceiveTextArgs args)
 		{
 			// TODO [ ] Implement method 
-            var splitChar = new char[] {' '};
-		    var dataReceived = args.Text;
-		    var parts = dataReceived.Split(splitChar);
-
-		    var responseType = parts[0].ToLower();
-		    var responseValue = parts[1].ToLower();
-
-		    if (responseType.Contains("power")) UpdatePower(responseValue);
-		    if (responseType.Contains("input")) UpdateInput(responseValue);
-            if (responseType.Contains("status")) UpdateStatus(responseValue);
-		    if (responseType.Contains("usage")) UpdateUsage(responseValue);
-			if (responseType.Contains("shutter"))
+			Debug.Console(2, this, "Handle_LineRecieved {0} ", args.Text);
+			
+			if (args.Text.Contains(" "))
 			{
-				if (responseValue.Contains("open"))
+				var dataReceived = args.Text;
+				var parts = dataReceived.Split(' ');
+
+				var responseType = parts[0].ToLower();
+				var responseValue = parts[1].ToLower();
+				Debug.Console(2, this, "responseType ={0} responseValue ={1}", responseType, responseValue);
+				if (responseType.Contains("power")) UpdatePower(responseValue);
+				if (responseType.Contains("input")) UpdateInput(responseValue);
+				if (responseType.Contains("status")) UpdateStatus(responseValue);
+				if (responseType.Contains("usage")) UpdateUsage(responseValue);
+				if (responseType.Contains("shutter"))
 				{
-					VideoMuteState = false;
+					if (responseValue.Contains("open"))
+					{
+						VideoMuteState = false;
+					}
+					else if (responseValue.Contains("close"))
+					{
+						VideoMuteState = true;
+					}
 				}
-				else if (responseValue.Contains("closed"))
+				if (responseType.Contains("freeze"))
 				{
-					VideoMuteState = true;
-				}
-			}
-			if (responseType.Contains("freeze"))
-			{
-				if (responseValue.Contains("off"))
-				{
-					FreezeImageState = false;
-				}
-				else if (responseValue.Contains("on"))
-				{
-					FreezeImageState = true;
+					if (responseValue.Contains("off"))
+					{
+						FreezeImageState = false;
+					}
+					else if (responseValue.Contains("on"))
+					{
+						FreezeImageState = true;
+					}
 				}
 			}
 		}
@@ -283,7 +292,20 @@ namespace EpiNecCommonAscii
                 
             }
         }
-
+		private void UpdateBooleanFeedback()
+		{
+			try
+			{
+				foreach (var item in InputFeedback)
+				{
+					item.FireUpdate();
+				}
+			}
+			catch (Exception e)
+			{
+				Debug.Console(0, this, "Exception Here - {0}", e.Message);
+			}
+		}
         private void UpdateStatus(string response)
         {
             const char splitChar = ';';
@@ -347,11 +369,16 @@ namespace EpiNecCommonAscii
 
 	    private void UpdateInput(string response)
 	    {
+			Debug.Console(2, this, "UpdateInput {0}", response);
             var newInput = InputPorts.FirstOrDefault(i => i.FeedbackMatchObject.Equals(response));
-
-	        if (newInput == null) return;
+			
+			if (newInput == null)
+			{
+				return;
+			}
 
 	        var inputKey = newInput.Key;
+			Debug.Console(2, this, "newInput {0}", inputKey);
 	        switch (inputKey)
 	        {
                 case RoutingPortNames.HdmiIn:
@@ -374,6 +401,7 @@ namespace EpiNecCommonAscii
 			if (string.IsNullOrEmpty(text)) return;
 
 			Comms.SendText(string.Format("{0}{1}", text, CommsDelimiter));
+			Debug.Console(2, this, "SendText {0}", text);
 		}
 
 		/// <summary>
@@ -410,12 +438,26 @@ namespace EpiNecCommonAscii
 
 	    private void InitializeRoutingInputPorts()
 	    {
+			InputFeedback = new List<BoolFeedback>();
 	        AddRoutingInputPort(new RoutingInputPort(RoutingPortNames.HdmiIn1, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi, new Action(() => InputSelect(new NecAsciiCommand(RoutingPortNames.HdmiIn1))),this), InputList[RoutingPortNames.HdmiIn1]);
 	        AddRoutingInputPort(new RoutingInputPort(RoutingPortNames.RgbIn1, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Rgb, new Action(() => InputSelect(new NecAsciiCommand(RoutingPortNames.RgbIn1))), this), InputList[RoutingPortNames.RgbIn1]);
+			for (var i = 0; i < InputPorts.Count; i++)
+			{
+				var j = i;
+
+				InputFeedback.Add(new BoolFeedback(() => InputNumber == j + 1));
+			}
+			InputNumberFeedback = new IntFeedback(() =>
+			{
+				//Debug.Console(2, this, "Change Input number {0}", _inputNumber);
+				return InputNumber;
+			});
 	    }
+
 
 	    public void InputSelect(NecAsciiCommand command)
 	    {
+			
 	        if (command == null) return;
 
 	        var commandString = command.Command;
@@ -427,9 +469,12 @@ namespace EpiNecCommonAscii
 	    }
 		public override void ExecuteSwitch(object selector)
 	    {
-	        if (!(selector is Action))
-	            return;
-
+			Debug.Console(2, this, "ExecuteSwitch");
+			if (selector is Action)
+				(selector as Action).Invoke();
+			else
+				Debug.Console(1, this, "WARNING: ExecuteSwitch cannot handle type {0}", selector.GetType());
+			/*
 	        if (!PowerIsOnFeedback.BoolValue)
 	        {
 	            EventHandler<FeedbackEventArgs> handler = null;
@@ -446,6 +491,7 @@ namespace EpiNecCommonAscii
 	        }
 
 	        PowerOn();
+			*/ 
 	    }
 
 		public void InputPoll()
@@ -631,13 +677,25 @@ namespace EpiNecCommonAscii
 			trilist.SetSigTrueAction(joinMap.Freeze.JoinNumber, () => FreezeImageToggle());
 			FreezeImageIsOnFeedBack.LinkInputSig(trilist.BooleanInput[joinMap.Freeze.JoinNumber]);
 
+			// input analog feedback
+			InputNumberFeedback.LinkInputSig(trilist.UShortInput[joinMap.InputSelect.JoinNumber]);
+			// Input digitals
+			var count = 0;
+			foreach (var input in InputPorts)
+			{
+				var i = count;
+				InputFeedback[count].LinkInputSig(
+					trilist.BooleanInput[joinMap.InputSelectOffset.JoinNumber + (uint)count]);
+				count++;
+			}
+
 			trilist.SetSigTrueAction(joinMap.VideoMuteOn.JoinNumber, () => VideoMuteOn());
 			trilist.SetSigTrueAction(joinMap.VideoMuteOff.JoinNumber, () => VideoMuteOff());
 			trilist.SetSigTrueAction(joinMap.VideoMuteToggle.JoinNumber, () => VideoMuteToggle());
 			VideoMuteIsOnFeedBack.LinkInputSig(trilist.BooleanInput[joinMap.VideoMuteOn.JoinNumber]);
 			VideoMuteIsOnFeedBack.LinkInputSig(trilist.BooleanInput[joinMap.VideoMuteToggle.JoinNumber]);
 			VideoMuteIsOnFeedBack.LinkComplementInputSig(trilist.BooleanInput[joinMap.VideoMuteOff.JoinNumber]);
-
+			
 			trilist.SetBoolSigAction(joinMap.HShiftPlus.JoinNumber, (b) =>
 				{
 					if (b) LensFunction(eLensFunction.HShiftPlus);
@@ -678,7 +736,7 @@ namespace EpiNecCommonAscii
 				if (b) LensFunction(eLensFunction.FocusMinus);
 				else LensFunction(eLensFunction.FocusStop);
 			});
-
+			
         }
 
         #endregion

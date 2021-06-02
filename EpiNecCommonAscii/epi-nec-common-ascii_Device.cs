@@ -128,9 +128,11 @@ namespace EpiNecCommonAscii
             set
             {
                 _inputNumber = InputNumber;
-				CurrentInputFeedback.FireUpdate();
+				
 				UpdateBooleanFeedback();
 				InputNumberFeedback.FireUpdate();
+				CurrentInputFeedback.FireUpdate();
+				Debug.Console(2, this, "newInputNumber {0}", _inputNumber);
             }
         }
 		public List<BoolFeedback> InputFeedback;
@@ -328,7 +330,7 @@ namespace EpiNecCommonAscii
             {
                 IsWarming = false;
                 IsCooling = false;
-                PowerIsOn = true;
+				PowerIsOn = false;
                 return;
             }
             if (response.Contains("warming"))
@@ -449,7 +451,6 @@ namespace EpiNecCommonAscii
 			}
 			InputNumberFeedback = new IntFeedback(() =>
 			{
-				//Debug.Console(2, this, "Change Input number {0}", _inputNumber);
 				return InputNumber;
 			});
 	    }
@@ -543,7 +544,7 @@ namespace EpiNecCommonAscii
 		/// </summary>
         public override void PowerOn()
         {
-            if (PowerIsOn || IsWarming || IsCooling) return;
+            //if (PowerIsOn || IsWarming || IsCooling) return;
 
 	        SendText("power on");
 			
@@ -555,7 +556,7 @@ namespace EpiNecCommonAscii
 		/// </summary>
 	    public override void PowerOff()
 	    {
-	        if (!PowerIsOn || IsWarming || IsCooling) return;
+	        //if (!PowerIsOn || IsWarming || IsCooling) return;
 
             SendText("power off");
 

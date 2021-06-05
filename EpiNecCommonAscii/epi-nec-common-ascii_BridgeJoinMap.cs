@@ -177,7 +177,7 @@ namespace EpiNecCommonAscii
         public JoinDataComplete LampHours = new JoinDataComplete(
             new JoinData
             {
-                JoinNumber = 5,
+                JoinNumber = 8,
                 JoinSpan = 1
             },
             new JoinMetadata

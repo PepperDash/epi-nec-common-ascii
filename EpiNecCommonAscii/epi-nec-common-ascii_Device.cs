@@ -101,7 +101,9 @@ namespace EpiNecCommonAscii
             get { return _lampHours; }
             set
             {
+				
                 _lampHours = value;
+				
                 LampHoursFeedback.FireUpdate();
                 LampHoursStringFeedback.FireUpdate();     
             }
@@ -127,7 +129,7 @@ namespace EpiNecCommonAscii
             get { return _inputNumber; }
             set
             {
-                _inputNumber = InputNumber;
+                _inputNumber = value;
 				
 				UpdateBooleanFeedback();
 				InputNumberFeedback.FireUpdate();
@@ -185,8 +187,11 @@ namespace EpiNecCommonAscii
 			ConnectFeedback = new BoolFeedback(() => Comms.IsConnected);
 			OnlineFeedback = new BoolFeedback(() => CommsMonitor.IsOnline);
 			MonitorStatusFeedback = new IntFeedback(() => (int)CommsMonitor.Status);	
-		    LampHoursFeedback = new IntFeedback(() => _lampHours);
-		    LampHoursStringFeedback = new StringFeedback(() => _lampHours.ToString());
+		    LampHoursFeedback = new IntFeedback(() => 
+				{
+				return LampHours; 	
+				});
+			LampHoursStringFeedback = new StringFeedback(() => LampHours.ToString());
 			VideoMuteIsOnFeedBack = new BoolFeedback(() => _VideoMuteState);
 			FreezeImageIsOnFeedBack = new BoolFeedback(() => _FreezeImageState);
 			
@@ -259,10 +264,9 @@ namespace EpiNecCommonAscii
 				var responseValue = parts[1].ToLower();
 				Debug.Console(2, this, "responseType ={0} responseValue ={1}", responseType, responseValue);
 				if (responseType.Contains("power")) UpdatePower(responseValue);
-				if (responseType.Contains("input")) UpdateInput(responseValue);
-				if (responseType.Contains("status")) UpdateStatus(responseValue);
-				if (responseType.Contains("usage")) UpdateUsage(responseValue);
-				if (responseType.Contains("shutter"))
+				else if (responseType.Contains("input")) UpdateInput(responseValue);
+				else if (responseType.Contains("status")) UpdateStatus(responseValue);
+				else if (responseType.Contains("shutter"))
 				{
 					if (responseValue.Contains("open"))
 					{
@@ -273,7 +277,7 @@ namespace EpiNecCommonAscii
 						VideoMuteState = true;
 					}
 				}
-				if (responseType.Contains("freeze"))
+				else if (responseType.Contains("freeze"))
 				{
 					if (responseValue.Contains("off"))
 					{
@@ -283,6 +287,10 @@ namespace EpiNecCommonAscii
 					{
 						FreezeImageState = true;
 					}
+				}
+				else if (responseType.Contains("usage"))
+				{
+					LampHours = Int16.Parse(parts[3].Trim());
 				}
 			}
 		}
@@ -372,27 +380,18 @@ namespace EpiNecCommonAscii
 	    private void UpdateInput(string response)
 	    {
 			Debug.Console(2, this, "UpdateInput {0}", response);
-            var newInput = InputPorts.FirstOrDefault(i => i.FeedbackMatchObject.Equals(response));
-			
-			if (newInput == null)
+			switch (response)
 			{
-				return;
-			}
-
-	        var inputKey = newInput.Key;
-			Debug.Console(2, this, "newInput {0}", inputKey);
-	        switch (inputKey)
-	        {
-                case RoutingPortNames.HdmiIn:
-                case RoutingPortNames.HdmiIn1:
+                case "hdmi1":
+                case "hdmiIn1":
 	                InputNumber = 1;
 	                break;
-                case RoutingPortNames.HdmiIn2:
-	                InputNumber = 2;
+                case "hdmi2":
+				case "hdmiIn2":
+					InputNumber = 3;
 	                break;
-                case RoutingPortNames.RgbIn:
-	            case RoutingPortNames.RgbIn1:
-	                InputNumber = 3;
+				case "computer":
+	                InputNumber = 2;
 	                break;
 	        }
            
@@ -423,7 +422,13 @@ namespace EpiNecCommonAscii
 					InputPoll();
 					break;
 				case 2:
-					VideoMutPoll();
+					VideoMutePoll();
+					break;
+				case 3:
+					LightUsagePoll();
+					break;
+				case 4:
+					PercentageUsagePoll();
 					break;
 				default:
 					PollState = 0;
@@ -592,7 +597,7 @@ namespace EpiNecCommonAscii
 		public void VideoMuteOn()
         {
 	        SendText("shutter close");
-			VideoMutPoll();
+			VideoMutePoll();
         }
 
 		/// <summary>
@@ -601,7 +606,7 @@ namespace EpiNecCommonAscii
 		public void VideoMuteOff()
         {
 	        SendText("shutter open");
-			VideoMutPoll();
+			VideoMutePoll();
         }
 		/// <summary>
 		/// 
@@ -613,16 +618,19 @@ namespace EpiNecCommonAscii
 			else 
 				VideoMuteOn();
 		}
-		/// <summary>
-		/// 
-		/// </summary>
-		public void VideoMutPoll()
+
+		public void VideoMutePoll()
 		{
 			SendText("shutter");
 		}
-		/// <summary>
-		/// 
-		/// </summary>
+		public void LightUsagePoll()
+		{
+			SendText("usage light hours");
+		}
+		public void PercentageUsagePoll()
+		{
+			SendText("usage light remains");
+		}
 		public void FreezeImageOn()
 		{
 			SendText("freeze on");

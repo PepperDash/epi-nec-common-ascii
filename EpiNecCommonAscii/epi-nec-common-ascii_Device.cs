@@ -23,7 +23,7 @@ namespace EpiNecCommonAscii
     /// <example>
     /// "EssentialsPluginDeviceTemplate" renamed to "SamsungMdcDevice"
     /// </example>
-    public class NecCommonAsciiDevice : TwoWayDisplayBase, IBridgeAdvanced
+    public class NecCommonAsciiDevice : TwoWayDisplayBase, IBridgeAdvanced, ICommunicationMonitor
     {
         /// <summary>
         /// It is often desirable to store the config
@@ -34,7 +34,8 @@ namespace EpiNecCommonAscii
 
         // TODO [ ] Add, modify, remove properties and fields as needed for the plugin being developed
         private readonly IBasicCommunication Comms;
-        private readonly GenericCommunicationMonitor CommsMonitor;
+		public StatusMonitorBase CommunicationMonitor { get; private set; }
+
 
         // TODO [ ] Delete the properties below if using a HEX/byte based API		
         // _comms gather is commonly used for ASCII based API's with deelimiters
@@ -185,8 +186,8 @@ namespace EpiNecCommonAscii
 			_config = config;
 
 			ConnectFeedback = new BoolFeedback(() => Comms.IsConnected);
-			OnlineFeedback = new BoolFeedback(() => CommsMonitor.IsOnline);
-			MonitorStatusFeedback = new IntFeedback(() => (int)CommsMonitor.Status);	
+			OnlineFeedback = new BoolFeedback(() => CommunicationMonitor.IsOnline);
+			MonitorStatusFeedback = new IntFeedback(() => (int)CommunicationMonitor.Status);	
 		    LampHoursFeedback = new IntFeedback(() => 
 				{
 				return LampHours; 	
@@ -198,7 +199,7 @@ namespace EpiNecCommonAscii
 
 			Comms = comms;
 
-			CommsMonitor = new GenericCommunicationMonitor(this, Comms, 20000, 120000, 300000, Poll);
+			CommunicationMonitor = new GenericCommunicationMonitor(this, Comms, 5000, 120000, 300000, Poll);
 
 			var socket = Comms as ISocketStatus;
 			if (socket != null)
@@ -218,6 +219,7 @@ namespace EpiNecCommonAscii
 			_commsGather = new CommunicationGather(Comms, CommsDelimiter);			
 			// Event fires when the defined delimter is found
 			_commsGather.LineReceived += Handle_LineRecieved;
+			
 	
 			#endregion Communication data event handlers.  Comment out any that don't apply to the API type
 
@@ -236,7 +238,7 @@ namespace EpiNecCommonAscii
 			// Essentials will handle the connect method to the device                       
 			Comms.Connect();
 			// Essentialss will handle starting the comms monitor
-			CommsMonitor.Start();
+			CommunicationMonitor.Start();
 
 			return base.CustomActivate();
 		}
@@ -248,6 +250,11 @@ namespace EpiNecCommonAscii
 
 			if (SocketStatusFeedback != null)
 				SocketStatusFeedback.FireUpdate();
+
+			if (OnlineFeedback != null)
+			{
+				OnlineFeedback.FireUpdate(); 
+			}
 		}
 		
 		private void Handle_LineRecieved(object sender, GenericCommMethodReceiveTextArgs args)
@@ -417,18 +424,22 @@ namespace EpiNecCommonAscii
 			{
 				case 0: 
 					PowerPoll();
+					VideoMutePoll();
 					break;
-				case 1: 
+				case 1:
+					PowerPoll();
+					VideoMutePoll();
 					InputPoll();
 					break;
 				case 2:
+					PowerPoll();
 					VideoMutePoll();
 					break;
 				case 3:
+					PowerPoll();
+					VideoMutePoll();
 					LightUsagePoll();
-					break;
-				case 4:
-					PercentageUsagePoll();
+					PollState = 0;
 					break;
 				default:
 					PollState = 0;
@@ -551,8 +562,7 @@ namespace EpiNecCommonAscii
         {
             //if (PowerIsOn || IsWarming || IsCooling) return;
 
-	        SendText("power on");
-			
+	        SendText("power on");			
 			PowerPoll();
         }
 
@@ -626,10 +636,6 @@ namespace EpiNecCommonAscii
 		public void LightUsagePoll()
 		{
 			SendText("usage light hours");
-		}
-		public void PercentageUsagePoll()
-		{
-			SendText("usage light remains");
 		}
 		public void FreezeImageOn()
 		{
@@ -749,7 +755,9 @@ namespace EpiNecCommonAscii
         }
 
         #endregion
-    }
+
+
+	}
 	public enum eLensFunction
 	{
 		ZoomPlus,

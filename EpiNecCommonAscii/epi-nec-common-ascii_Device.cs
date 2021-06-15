@@ -387,21 +387,7 @@ namespace EpiNecCommonAscii
 	    private void UpdateInput(string response)
 	    {
 			Debug.Console(2, this, "UpdateInput {0}", response);
-			switch (response)
-			{
-                case "hdmi1":
-                case "hdmiIn1":
-	                InputNumber = 1;
-	                break;
-                case "hdmi2":
-				case "hdmiIn2":
-					InputNumber = 3;
-	                break;
-				case "computer":
-	                InputNumber = 2;
-	                break;
-	        }
-           
+            InputNumber = GetInputNumberFromName(response);         
 	    }
 	
 		public void SendText(string text)
@@ -454,6 +440,23 @@ namespace EpiNecCommonAscii
             InputPorts.Add(port);
 	    }
 
+        private int GetInputNumberFromName(string name)
+        {
+            switch(name)
+            {
+                case "hdmi1":
+                case "hdmiIn1":
+                    return(1);
+                case "hdmi2":
+                case "hdmiIn2":
+                    return(3);
+                case "computer":
+                    return(2);
+                default:
+                    return (0);
+            }
+        }
+
 	    private void InitializeRoutingInputPorts()
 	    {
 			InputFeedback = new List<BoolFeedback>();
@@ -480,6 +483,9 @@ namespace EpiNecCommonAscii
 	        var commandString = command.Command;
 
 	        if (commandString == string.Empty ||!InputList.ContainsKey(commandString)) return;
+
+            //Input already selected, prevent resend which will blink display for a second
+            if (InputNumber == GetInputNumberFromName(commandString)) return;
 
             SendText(string.Format("input {0}",InputList[commandString]));
 			InputPoll();

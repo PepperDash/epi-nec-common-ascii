@@ -260,7 +260,7 @@ namespace EpiNecCommonAscii
 		private void Handle_LineRecieved(object sender, GenericCommMethodReceiveTextArgs args)
 		{
 			// TODO [ ] Implement method 
-			Debug.Console(2, this, "Handle_LineRecieved {0} ", args.Text);
+			//Debug.Console(2, this, "Handle_LineRecieved {0} ", args.Text);
 			
 			if (args.Text.Contains(" "))
 			{
@@ -395,7 +395,7 @@ namespace EpiNecCommonAscii
 			if (string.IsNullOrEmpty(text)) return;
 
 			Comms.SendText(string.Format("{0}{1}", text, CommsDelimiter));
-			Debug.Console(2, this, "SendText {0}", text);
+			//Debug.Console(2, this, "SendText {0}", text);
 		}
 
 		/// <summary>

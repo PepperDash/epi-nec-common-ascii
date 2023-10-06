@@ -38,7 +38,6 @@ If you need a different version of PepperDash Essentials, use the command:
 ```
 nuget install PepperDashEssentials -OutputDirectory .\packages -excludeVersion -Version {versionToGet}
 ```
-
 Omitting the **-Version** option will pull the latest version available.
 
 ## Github Actions

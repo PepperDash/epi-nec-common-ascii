@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Crestron.SimplSharp;
+using Crestron.SimplSharpPro.CrestronThread;
 using Crestron.SimplSharpPro.DeviceSupport;
 using Crestron.SimplSharpPro.DM;
 using EpiNecCommonAscii.ResponseHandling;
@@ -431,6 +432,9 @@ namespace EpiNecCommonAscii
 					PollState = 0;
 					return;
 			}
+
+			Thread.Sleep(300);
+			
 			PollState++; 
 		}
 
@@ -568,8 +572,10 @@ namespace EpiNecCommonAscii
         {
             //if (PowerIsOn || IsWarming || IsCooling) return;
 
-	        SendText("power on");			
-			PowerPoll();
+	        SendText("power on");
+
+			new CTimer((o) => PowerPoll(), 300);
+			//PowerPoll();
         }
 
 		/// <summary>
@@ -582,8 +588,9 @@ namespace EpiNecCommonAscii
             SendText("power off");
 
 	        PowerIsOn = false;
-			
-			PowerPoll();
+
+			new CTimer((o) => PowerPoll(), 300);
+			//PowerPoll();
 	    }
 
 		/// <summary>
@@ -613,7 +620,9 @@ namespace EpiNecCommonAscii
 		public void VideoMuteOn()
         {
 	        SendText("shutter close");
-			VideoMutePoll();
+
+			new CTimer((o) => VideoMutePoll(), 300);
+			//VideoMutePoll();
         }
 
 		/// <summary>
@@ -622,7 +631,9 @@ namespace EpiNecCommonAscii
 		public void VideoMuteOff()
         {
 	        SendText("shutter open");
-			VideoMutePoll();
+
+			new CTimer((o) => VideoMutePoll(), 300);
+			//VideoMutePoll();
         }
 		/// <summary>
 		/// 

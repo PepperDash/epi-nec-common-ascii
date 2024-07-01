@@ -431,11 +431,7 @@ namespace EpiNecCommonAscii
 				default:
 					PollState = 0;
 					return;
-			}
-
-			Thread.Sleep(300);
-			
-			PollState++; 
+			}PollState++; 
 		}
 
 	    private void AddRoutingInputPort(RoutingInputPort port, string fbMatch)
@@ -492,7 +488,9 @@ namespace EpiNecCommonAscii
             if (InputNumber == GetInputNumberFromName(commandString)) return;
 
             SendText(string.Format("input {0}",InputList[commandString]));
-			InputPoll();
+
+			new CTimer((o) => InputPoll(), 300);
+			//InputPoll();
 	    }
 		public override void ExecuteSwitch(object selector)
 	    {
@@ -657,12 +655,16 @@ namespace EpiNecCommonAscii
 		public void FreezeImageOn()
 		{
 			SendText("freeze on");
-			FreezeImagePoll();
+
+			new CTimer((o) => FreezeImagePoll(), 300);
+			//FreezeImagePoll();
 		}
 		public void FreezeImageOff()
 		{
 			SendText("freeze off");
-			FreezeImagePoll();
+
+			new CTimer((o) => FreezeImagePoll(), 300);
+			//FreezeImagePoll();
 		}
 		public void FreezeImageToggle()
 		{

@@ -262,3 +262,101 @@ The selection below documents the digital, analog, and serial joins used by the 
 |                           | 4   |                     |
 |                           | 5   |                     |
 
+<!-- START Minimum Essentials Framework Versions -->
+### Minimum Essentials Framework Versions
+
+- 1.6.5
+<!-- END Minimum Essentials Framework Versions -->
+<!-- START Config Example -->
+### Config Example
+
+```json
+{
+    "key": "GeneratedKey",
+    "uid": 1,
+    "name": "GeneratedName",
+    "type": "NecCommonAscii",
+    "group": "Group",
+    "properties": {
+        "control": "SampleValue",
+        "pollTimeMs": 0,
+        "warningTimeoutMs": 0,
+        "errorTimeoutMs": 0,
+        "warmingTimeMs": "SampleValue",
+        "coolingTimeMs": "SampleValue",
+        "pluginCollection": {
+            "SampleValue": {
+                "name": "SampleString",
+                "value": "SampleValue"
+            }
+        }
+    }
+}
+```
+<!-- END Config Example -->
+<!-- START Supported Types -->
+### Supported Types
+
+- NecCommonAscii
+- nec ascii projector
+- nec common ascii
+<!-- END Supported Types -->
+<!-- START Join Maps -->
+
+<!-- END Join Maps -->
+<!-- START Interfaces Implemented -->
+### Interfaces Implemented
+
+- IBridgeAdvanced
+- ICommunicationMonitor
+<!-- END Interfaces Implemented -->
+<!-- START Base Classes -->
+### Base Classes
+
+- DeviceConfig
+- DisplayControllerJoinMap
+- TwoWayDisplayBase
+- Response
+<!-- END Base Classes -->
+<!-- START Public Methods -->
+### Public Methods
+
+- public void SendText(string text)
+- public void Poll()
+- public void InputSelect(NecAsciiCommand command)
+- public void InputPoll()
+- public void PowerPoll()
+- public void VideoMuteOn()
+- public void VideoMuteOff()
+- public void VideoMuteToggle()
+- public void VideoMutePoll()
+- public void LightUsagePoll()
+- public void FreezeImageOn()
+- public void FreezeImageOff()
+- public void FreezeImageToggle()
+- public void FreezeImagePoll()
+- public void LensFunction(eLensFunction function)
+- public void LinkToApi(BasicTriList trilist, uint joinStart, string joinMapKey, EiscApiAdvanced bridge)
+- public bool GetPowerState()
+<!-- END Public Methods -->
+<!-- START Bool Feedbacks -->
+### Bool Feedbacks
+
+- ConnectFeedback
+- OnlineFeedback
+- VideoMuteIsOnFeedBack
+- FreezeImageIsOnFeedBack
+<!-- END Bool Feedbacks -->
+<!-- START Int Feedbacks -->
+### Int Feedbacks
+
+- SocketStatusFeedback
+- MonitorStatusFeedback
+- LampHoursFeedback
+- InputNumberFeedback
+<!-- END Int Feedbacks -->
+<!-- START String Feedbacks -->
+### String Feedbacks
+
+- LampHoursStringFeedback
+<!-- END String Feedbacks -->

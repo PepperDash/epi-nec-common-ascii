@@ -7,6 +7,7 @@ using Crestron.SimplSharpPro.DeviceSupport;
 using Crestron.SimplSharpPro.DM;
 using EpiNecCommonAscii.ResponseHandling;
 using PepperDash.Core;
+using PepperDash.Essentials.Devices.Common.Displays;
 using PepperDash.Essentials.Core;
 using PepperDash.Essentials.Core.Config;
 using PepperDash.Essentials.Core.Routing;

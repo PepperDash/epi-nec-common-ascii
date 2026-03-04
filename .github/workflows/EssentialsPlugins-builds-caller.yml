@@ -1,24 +1,21 @@
-name: Essentials Plugin Builds
+name: Build Essentials Plugin
 
 on:
   push:
     branches:
-      - main
-      - development
-      - feature/**
-      - release/**
-      - hotfix/**
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: Branch to build
-        required: true
-        type: string
+      - '**'
 
 jobs:
-  call-workflow:
+  getVersion:
+    uses: PepperDash/workflow-templates/.github/workflows/essentialsplugins-getversion.yml@main
+    secrets: inherit
+  build-4Series:
     uses: PepperDash/workflow-templates/.github/workflows/essentialsplugins-4Series-builds.yml@main
     secrets: inherit
+    needs: getVersion
+    if: needs.getVersion.outputs.newVersion == 'true'
     with:
-      branch: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref_name }}
-      default-branch: main
+      newVersion: ${{ needs.getVersion.outputs.newVersion }}
+      version: ${{ needs.getVersion.outputs.version }}
+      tag: ${{ needs.getVersion.outputs.tag }}
+      channel: ${{ needs.getVersion.outputs.channel }}

@@ -12,6 +12,7 @@ using PepperDash.Essentials.Core;
 using PepperDash.Essentials.Core.Config;
 using PepperDash.Essentials.Core.Routing;
 using PepperDash.Essentials.Core.Bridges;
+using PepperDash.Essentials.Core.DeviceTypeInterfaces;
 
 namespace EpiNecCommonAscii  
 {
@@ -25,7 +26,7 @@ namespace EpiNecCommonAscii
     /// <example>
     /// "EssentialsPluginDeviceTemplate" renamed to "SamsungMdcDevice"
     /// </example>
-    public class NecCommonAsciiDevice : TwoWayDisplayBase, IBridgeAdvanced, ICommunicationMonitor
+    public class NecCommonAsciiDevice : TwoWayDisplayBase, IBridgeAdvanced, ICommunicationMonitor, IHasInputs<string>
     {
         /// <summary>
         /// It is often desirable to store the config
@@ -75,6 +76,7 @@ namespace EpiNecCommonAscii
         public StringFeedback LampHoursStringFeedback { get; private set; }
 
         public Dictionary<string, string> InputList { get; private set; }
+		private readonly NecAsciiInputs _inputs;
 
         private bool _isWarming;
         public bool IsWarming
@@ -172,6 +174,8 @@ namespace EpiNecCommonAscii
 			: base(key, name)
 		{
 			Debug.Console(0, this, "Constructing new {0} instance", name);
+
+			_inputs = new NecAsciiInputs();
 
 			// TODO [ ] Update the constructor as needed for the plugin device being developed
 
@@ -389,7 +393,8 @@ namespace EpiNecCommonAscii
 	    private void UpdateInput(string response)
 	    {
 			Debug.Console(2, this, "UpdateInput {0}", response);
-            InputNumber = GetInputNumberFromName(response);         
+			InputNumber = GetInputNumberFromName(response);
+			SyncSelectableInputs();
 	    }
 	
 		public void SendText(string text)
@@ -458,10 +463,37 @@ namespace EpiNecCommonAscii
             }
         }
 
+		private string GetInputNameFromNumber(int inputNumber)
+		{
+			switch (inputNumber)
+			{
+				case 1:
+					return NecAsciiInputs.HdmiIn1;
+				case 2:
+					return NecAsciiInputs.RgbIn1;
+				case 3:
+					return NecAsciiInputs.HdmiIn2;
+				default:
+					return null;
+			}
+		}
+
+		private void SyncSelectableInputs()
+		{
+			var selectedInput = GetInputNameFromNumber(InputNumber);
+			if (string.IsNullOrEmpty(selectedInput))
+			{
+				return;
+			}
+
+			_inputs.SetCurrentItemFromFeedback(selectedInput);
+		}
+
 	    private void InitializeRoutingInputPorts()
 	    {
 			InputFeedback = new List<BoolFeedback>();
 	        AddRoutingInputPort(new RoutingInputPort(RoutingPortNames.HdmiIn1, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi, new Action(() => InputSelect(new NecAsciiCommand(RoutingPortNames.HdmiIn1))),this), InputList[RoutingPortNames.HdmiIn1]);
+	        AddRoutingInputPort(new RoutingInputPort(RoutingPortNames.HdmiIn2, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi, new Action(() => InputSelect(new NecAsciiCommand(RoutingPortNames.HdmiIn2))), this), InputList[RoutingPortNames.HdmiIn2]);
 	        AddRoutingInputPort(new RoutingInputPort(RoutingPortNames.RgbIn1, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Rgb, new Action(() => InputSelect(new NecAsciiCommand(RoutingPortNames.RgbIn1))), this), InputList[RoutingPortNames.RgbIn1]);
 			for (var i = 0; i < InputPorts.Count; i++)
 			{
@@ -473,6 +505,8 @@ namespace EpiNecCommonAscii
 			{
 				return InputNumber;
 			});
+
+			SyncSelectableInputs();
 	    }
 
 
@@ -555,6 +589,9 @@ namespace EpiNecCommonAscii
 						case 2:
 							inputString = RoutingPortNames.RgbIn1;
 							break;
+						case 3:
+							inputString = RoutingPortNames.HdmiIn2;
+							break;
 					}
 					return inputString;
 
@@ -562,11 +599,13 @@ namespace EpiNecCommonAscii
 			}
 		}
 
-	    #region Commands
+		public ISelectableItems<string> Inputs => _inputs;
 
-		/// <summary>
-		/// 
-		/// </summary>
+        #region Commands
+
+        /// <summary>
+        /// 
+        /// </summary>
         public override void PowerOn()
         {
             //if (PowerIsOn || IsWarming || IsCooling) return;
@@ -794,4 +833,139 @@ namespace EpiNecCommonAscii
 		VShiftStop,
 		Home
 	}
+
+	public class NecAsciiInputs: ISelectableItems<string>
+	{
+		public const string HdmiIn1 = "hdmiIn1";
+		public const string HdmiIn2 = "hdmiIn2";
+		public const string RgbIn1 = "rgbIn1";
+		private const string HdmiIn1Label = "HDMI 1";
+		private const string HdmiIn2Label = "HDMI 2";
+		private const string RgbIn1Label = "RGB";
+
+		private Dictionary<string, ISelectableItem> _items;
+		private string _currentItem;
+		private bool _isApplyingFeedback;
+
+		public NecAsciiInputs()
+		{
+			_items = new Dictionary<string, ISelectableItem>(StringComparer.OrdinalIgnoreCase)
+			{
+				{ HdmiIn1, new NecAsciiSelectableItem(HdmiIn1, HdmiIn1Label, () => _isApplyingFeedback) },
+				{ HdmiIn2, new NecAsciiSelectableItem(HdmiIn2, HdmiIn2Label, () => _isApplyingFeedback) },
+				{ RgbIn1, new NecAsciiSelectableItem(RgbIn1, RgbIn1Label, () => _isApplyingFeedback) }
+			};
+
+			_currentItem = null;
+		}
+
+        public Dictionary<string, ISelectableItem> Items
+        {
+            get => _items;
+            set
+            {
+                _items = value ?? new Dictionary<string, ISelectableItem>(StringComparer.OrdinalIgnoreCase);
+                ItemsUpdated?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public string CurrentItem
+        {
+            get => _currentItem;
+            set
+            {
+                if (string.IsNullOrEmpty(value) || !_items.ContainsKey(value) || string.Equals(_currentItem, value, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                _currentItem = value;
+                CurrentItemChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+		public void SetCurrentItemFromFeedback(string value)
+		{
+			if (string.IsNullOrEmpty(value) || !_items.ContainsKey(value))
+			{
+				return;
+			}
+
+			var changed = !string.Equals(_currentItem, value, StringComparison.OrdinalIgnoreCase);
+			_isApplyingFeedback = true;
+			try
+			{
+				foreach (var item in _items)
+				{
+					item.Value.IsSelected = string.Equals(item.Key, value, StringComparison.OrdinalIgnoreCase);
+				}
+			}
+			finally
+			{
+				_isApplyingFeedback = false;
+			}
+
+			_currentItem = value;
+
+			if (changed)
+			{
+				CurrentItemChanged?.Invoke(this, EventArgs.Empty);
+			}
+
+			ItemsUpdated?.Invoke(this, EventArgs.Empty);
+		}
+
+        public event EventHandler ItemsUpdated;
+        public event EventHandler CurrentItemChanged;
+
+		private class NecAsciiSelectableItem : ISelectableItem
+		{
+			private bool _isSelected;
+			private readonly string _key;
+			private readonly string _name;
+			private readonly Func<bool> _canApplySelection;
+
+			public NecAsciiSelectableItem(string key, string name, Func<bool> canApplySelection)
+			{
+				_key = key;
+				_name = name;
+				_canApplySelection = canApplySelection;
+			}
+
+			public string Key => _key;
+			public string Name => _name;
+
+			public bool IsSelected
+			{
+				get => _isSelected;
+				set
+				{
+					if (_canApplySelection != null && !_canApplySelection())
+					{
+						return;
+					}
+
+					if (_isSelected == value)
+					{
+						return;
+					}
+
+					_isSelected = value;
+					ItemUpdated?.Invoke(this, EventArgs.Empty);
+				}
+			}
+
+			public event EventHandler ItemUpdated;
+
+			public void Select()
+			{
+				if (_canApplySelection != null && !_canApplySelection())
+				{
+					return;
+				}
+
+				IsSelected = true;
+			}
+		}
+    }
 }

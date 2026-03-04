@@ -17,7 +17,7 @@ on:
 
 jobs:
   call-workflow:
-    uses: PepperDash/workflow-templates/.github/workflows/essentialsplugins-builds.yml@main
+    uses: PepperDash/workflow-templates/.github/workflows/essentialsplugins-4Series-builds.yml@main
     secrets: inherit
     with:
       branch: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref_name }}

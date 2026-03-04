@@ -9,13 +9,13 @@
     <RepositoryUrl>https://github.com/PepperDash-Engineering/epi-nec-common-ascii</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>Crestron;4series;nec;display</PackageTags>
-    <PackageOutputPath>$(MSBuildThisFileDirectory)output</PackageOutputPath>
+    <PackageOutputPath>$(MSBuildThisFileDirectory)..\output</PackageOutputPath>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)LICENSE.md" Pack="true" PackagePath="" />
-    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="" />
+    <None Include="$(MSBuildThisFileDirectory)..\LICENSE.md" Pack="true" PackagePath="" />
+    <None Include="$(MSBuildThisFileDirectory)..\README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 </Project>

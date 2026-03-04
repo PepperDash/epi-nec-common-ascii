@@ -13,7 +13,6 @@
     <Version>1.0.0-local</Version>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <InformationalVersion>$(Version)</InformationalVersion>
-    <OutputPath>4Series\bin\$(Configuration)\</OutputPath>
     <Authors>PepperDash Technologies</Authors>
     <PackageId>PepperDash.Essentials.Plugin.NecCommonAscii</PackageId>
     <PackageProjectUrl>https://github.com/PepperDash-Engineering/epi-nec-common-ascii</PackageProjectUrl>
@@ -34,6 +33,8 @@
     <None Remove="*.projectinfo" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="PepperDashEssentials" Version="2.24.5" />
+    <PackageReference Include="PepperDashEssentials" Version="2.24.4">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
 </Project>

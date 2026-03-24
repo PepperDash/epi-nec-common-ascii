@@ -648,6 +648,8 @@ namespace EpiNecCommonAscii
 
 	        SendText("power on");
 
+			_powerPollTimer?.Stop();
+			_powerPollTimer?.Dispose();
 			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 0, 50);
 			//PowerPoll();
         }
@@ -661,7 +663,9 @@ namespace EpiNecCommonAscii
 
             SendText("power off");
 
-			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 0, 200 );
+			_powerPollTimer?.Stop();
+			_powerPollTimer?.Dispose();
+			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 0, 200);
 			//PowerPoll();
 	    }
 

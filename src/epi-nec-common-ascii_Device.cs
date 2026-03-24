@@ -26,7 +26,7 @@ namespace EpiNecCommonAscii
     /// <example>
     /// "EssentialsPluginDeviceTemplate" renamed to "SamsungMdcDevice"
     /// </example>
-    public class NecCommonAsciiDevice : TwoWayDisplayBase, IBridgeAdvanced, ICommunicationMonitor, IHasInputs<string>
+    public class NecCommonAsciiDevice : TwoWayDisplayBase, IBridgeAdvanced, ICommunicationMonitor, IHasInputs<string>, IWarmingCooling
     {
         /// <summary>
         /// It is often desirable to store the config

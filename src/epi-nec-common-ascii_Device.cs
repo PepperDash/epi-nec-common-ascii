@@ -78,6 +78,7 @@ namespace EpiNecCommonAscii
 
         public Dictionary<string, string> InputList { get; private set; }
 		private readonly NecAsciiInputs _inputs;
+		private CTimer _powerPollTimer;
 
         private bool _isWarming;
         public bool IsWarming
@@ -248,6 +249,13 @@ namespace EpiNecCommonAscii
             this.LogInformation("PowerIsOnFeedback changed to {0}", PowerIsOnFeedback.BoolValue);
 			IsWarming = false;
             IsCooling = false;
+
+            if (_powerPollTimer != null)
+            {
+                _powerPollTimer.Stop();
+                _powerPollTimer.Dispose();
+                _powerPollTimer = null;
+            }
         }
         private void IsWarmingUpFeedback_OutputChange(object sender, FeedbackEventArgs e)
         {
@@ -645,7 +653,7 @@ namespace EpiNecCommonAscii
 				IsCooling = false;
                 IsWarming = true;
 
-			new CTimer((o) => PowerPoll(), 300);
+			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 0, 50);
 			//PowerPoll();
         }
 
@@ -661,7 +669,7 @@ namespace EpiNecCommonAscii
 	        //PowerIsOn = false;
 			 IsCooling = true;
 			 IsWarming = false;
-			new CTimer((o) => PowerPoll(), 300);
+			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 0, 50);
 			//PowerPoll();
 	    }
 

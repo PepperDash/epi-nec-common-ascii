@@ -176,6 +176,7 @@ namespace EpiNecCommonAscii
 			Debug.Console(0, this, "Constructing new {0} instance", name);
 
 			_inputs = new NecAsciiInputs();
+			_inputs.CurrentItemChanged += (sender, args) => InputSelect(new NecAsciiCommand(_inputs.CurrentItem));
 
 			// TODO [ ] Update the constructor as needed for the plugin device being developed
 

@@ -247,8 +247,6 @@ namespace EpiNecCommonAscii
       	private void PowerIsOnFeedback_OutputChange(object sender, FeedbackEventArgs e)
         {
             this.LogInformation("PowerIsOnFeedback changed to {0}", PowerIsOnFeedback.BoolValue);
-			IsWarming = false;
-            IsCooling = false;
 
             if (_powerPollTimer != null)
             {
@@ -650,9 +648,6 @@ namespace EpiNecCommonAscii
 
 	        SendText("power on");
 
-				IsCooling = false;
-                IsWarming = true;
-
 			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 0, 50);
 			//PowerPoll();
         }
@@ -666,10 +661,7 @@ namespace EpiNecCommonAscii
 
             SendText("power off");
 
-	        //PowerIsOn = false;
-			 IsCooling = true;
-			 IsWarming = false;
-			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 0, 50);
+			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 0, 200 );
 			//PowerPoll();
 	    }
 

@@ -311,6 +311,11 @@ namespace EpiNecCommonAscii
 				if (responseType.Contains("power")) UpdatePower(responseValue);
 				else if (responseType.Contains("input")) UpdateInput(responseValue);
 				else if (responseType.Contains("status")) UpdateStatus(responseValue);
+				else if (responseType.Contains("error:busy") && _powerPollTimer != null) //often device responds with this instead of warming
+				{
+					IsCooling = false;
+					IsWarming = true;
+				}
 				else if (responseType.Contains("shutter"))
 				{
 					if (responseValue.Contains("open"))

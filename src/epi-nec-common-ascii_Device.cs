@@ -854,15 +854,15 @@ namespace EpiNecCommonAscii
 		{
 			_items = new Dictionary<string, ISelectableItem>(StringComparer.OrdinalIgnoreCase)
 			{
-				{ HdmiIn1, new NecAsciiSelectableItem(HdmiIn1, HdmiIn1Label, () => _isApplyingFeedback) },
-				{ HdmiIn2, new NecAsciiSelectableItem(HdmiIn2, HdmiIn2Label, () => _isApplyingFeedback) },
-				{ RgbIn1, new NecAsciiSelectableItem(RgbIn1, RgbIn1Label, () => _isApplyingFeedback) }
+				{ HdmiIn1, new NecAsciiSelectableItem(HdmiIn1, HdmiIn1Label) },
+				{ HdmiIn2, new NecAsciiSelectableItem(HdmiIn2, HdmiIn2Label) },
+				{ RgbIn1, new NecAsciiSelectableItem(RgbIn1, RgbIn1Label) }
 			};
 
 			 foreach (var item in _items) //This creates delegates for each item that fire when item.Value.ItemUpdated is invoked
 				{
 					item.Value.ItemUpdated += (sender, args) => {
-						if (_isApplyingFeedback) return;
+						if (_isApplyingFeedback) return; // prevents feedback from looping back into InputSelect, no need for guard
 						if ((sender as ISelectableItem)?.IsSelected == true)
 							CurrentItem = item.Key;
 					};
@@ -933,13 +933,11 @@ namespace EpiNecCommonAscii
 			private bool _isSelected;
 			private readonly string _key;
 			private readonly string _name;
-			private readonly Func<bool> _canApplySelection;
 
-			public NecAsciiSelectableItem(string key, string name, Func<bool> canApplySelection)
+			public NecAsciiSelectableItem(string key, string name)
 			{
 				_key = key;
 				_name = name;
-				_canApplySelection = canApplySelection;
 			}
 
 			public string Key => _key;
@@ -950,16 +948,7 @@ namespace EpiNecCommonAscii
 				get => _isSelected;
 				set
 				{
-					if (_canApplySelection != null && !_canApplySelection())
-					{
-						return;
-					}
-
-					if (_isSelected == value)
-					{
-						return;
-					}
-
+					if (_isSelected == value) return;
 					_isSelected = value;
 					ItemUpdated?.Invoke(this, EventArgs.Empty);
 				}
@@ -967,15 +956,7 @@ namespace EpiNecCommonAscii
 
 			public event EventHandler ItemUpdated;
 
-			public void Select()
-			{
-				if (_canApplySelection != null && !_canApplySelection())
-				{
-					return;
-				}
-
-				IsSelected = true;
-			}
+			public void Select() => IsSelected = true;
 		}
     }
 }

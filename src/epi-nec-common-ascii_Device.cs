@@ -79,6 +79,7 @@ namespace EpiNecCommonAscii
         public Dictionary<string, string> InputList { get; private set; }
 		private readonly NecAsciiInputs _inputs;
 		private CTimer _powerPollTimer;
+		private const int PowerPollIntervalMs = 200;
 
         private bool _isWarming;
         public bool IsWarming
@@ -248,12 +249,7 @@ namespace EpiNecCommonAscii
         {
             this.LogInformation("PowerIsOnFeedback changed to {0}", PowerIsOnFeedback.BoolValue);
 
-            if (_powerPollTimer != null)
-            {
-                _powerPollTimer.Stop();
-                _powerPollTimer.Dispose();
-                _powerPollTimer = null;
-            }
+            StopPowerPollTimer();
         }
         private void IsWarmingUpFeedback_OutputChange(object sender, FeedbackEventArgs e)
         {
@@ -639,6 +635,19 @@ namespace EpiNecCommonAscii
 
         #region Commands
 
+		private void StartPowerPollTimer()
+		{
+			StopPowerPollTimer();
+			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 0, PowerPollIntervalMs);
+		}
+
+		private void StopPowerPollTimer()
+		{
+			_powerPollTimer?.Stop();
+			_powerPollTimer?.Dispose();
+			_powerPollTimer = null;
+		}
+
         /// <summary>
         /// 
         /// </summary>
@@ -648,9 +657,7 @@ namespace EpiNecCommonAscii
 
 	        SendText("power on");
 
-			_powerPollTimer?.Stop();
-			_powerPollTimer?.Dispose();
-			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 0, 50);
+			StartPowerPollTimer();
 			//PowerPoll();
         }
 
@@ -663,9 +670,7 @@ namespace EpiNecCommonAscii
 
             SendText("power off");
 
-			_powerPollTimer?.Stop();
-			_powerPollTimer?.Dispose();
-			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 0, 200);
+			StartPowerPollTimer();
 			//PowerPoll();
 	    }
 

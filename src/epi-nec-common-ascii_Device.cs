@@ -246,6 +246,8 @@ namespace EpiNecCommonAscii
       	private void PowerIsOnFeedback_OutputChange(object sender, FeedbackEventArgs e)
         {
             this.LogInformation("PowerIsOnFeedback changed to {0}", PowerIsOnFeedback.BoolValue);
+			IsWarming = false;
+            IsCooling = false;
         }
         private void IsWarmingUpFeedback_OutputChange(object sender, FeedbackEventArgs e)
         {
@@ -366,15 +368,15 @@ namespace EpiNecCommonAscii
 	    {
             if (response.Contains("on"))
             {
-                IsWarming = false;
-                IsCooling = false;
+                //IsWarming = false;
+                //IsCooling = false;
                 PowerIsOn = true;
                 return;
             }
             if (response.Contains("off"))
             {
-                IsWarming = false;
-                IsCooling = false;
+                //IsWarming = false;
+                //IsCooling = false;
 				PowerIsOn = false;
                 return;
             }

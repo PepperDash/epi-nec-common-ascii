@@ -648,6 +648,10 @@ namespace EpiNecCommonAscii
 
 	        SendText("power on");
 
+				IsCooling = false;
+                PowerIsOn = true;
+                IsWarming = true;
+
 			new CTimer((o) => PowerPoll(), 300);
 			//PowerPoll();
         }
@@ -662,7 +666,8 @@ namespace EpiNecCommonAscii
             SendText("power off");
 
 	        PowerIsOn = false;
-
+			 IsCooling = true;
+			 IsWarming = false;
 			new CTimer((o) => PowerPoll(), 300);
 			//PowerPoll();
 	    }

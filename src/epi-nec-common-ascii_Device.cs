@@ -368,36 +368,29 @@ namespace EpiNecCommonAscii
 	    {
             if (response.Contains("on"))
             {
-                //IsWarming = false;
-                //IsCooling = false;
                 PowerIsOn = true;
                 return;
             }
             if (response.Contains("off"))
             {
-                //IsWarming = false;
-                //IsCooling = false;
 				PowerIsOn = false;
                 return;
             }
             if (response.Contains("warming"))
             {
                 IsCooling = false;
-                PowerIsOn = true;
                 IsWarming = true;
                 return;
             }
 			if (response.Contains("busy"))
             {
                 IsCooling = false;
-                PowerIsOn = true;
                 IsWarming = true;
                 return;
             }
             if (response.Contains("cooling"))
             {
                 IsWarming = false;
-                PowerIsOn = true;
                 IsCooling = true;
                 return;
             }
@@ -406,7 +399,6 @@ namespace EpiNecCommonAscii
 	        {
                 IsWarming = false;
                 IsCooling = false;
-                PowerIsOn = true;
                 return;
 	        }
 
@@ -651,7 +643,6 @@ namespace EpiNecCommonAscii
 	        SendText("power on");
 
 				IsCooling = false;
-                PowerIsOn = true;
                 IsWarming = true;
 
 			new CTimer((o) => PowerPoll(), 300);
@@ -667,7 +658,7 @@ namespace EpiNecCommonAscii
 
             SendText("power off");
 
-	        PowerIsOn = false;
+	        //PowerIsOn = false;
 			 IsCooling = true;
 			 IsWarming = false;
 			new CTimer((o) => PowerPoll(), 300);

@@ -299,7 +299,14 @@ namespace EpiNecCommonAscii
 		{
 			// TODO [ ] Implement method 
 			//Debug.Console(2, this, "Handle_LineRecieved {0} ", args.Text);
-			
+
+			if (args.Text.Contains("error:busy") && _powerPollTimer != null) //device often sends this instead of power warming
+			{
+				IsCooling = false;
+				IsWarming = true;
+				return;
+			}
+
 			if (args.Text.Contains(" "))
 			{
 				var dataReceived = args.Text;
@@ -311,11 +318,6 @@ namespace EpiNecCommonAscii
 				if (responseType.Contains("power")) UpdatePower(responseValue);
 				else if (responseType.Contains("input")) UpdateInput(responseValue);
 				else if (responseType.Contains("status")) UpdateStatus(responseValue);
-				else if (responseType.Contains("error:busy") && _powerPollTimer != null) //often device responds with this instead of warming
-				{
-					IsCooling = false;
-					IsWarming = true;
-				}
 				else if (responseType.Contains("shutter"))
 				{
 					if (responseValue.Contains("open"))

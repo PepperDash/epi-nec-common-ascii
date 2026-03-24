@@ -527,6 +527,10 @@ namespace EpiNecCommonAscii
 
             SendText(string.Format("input {0}",InputList[commandString]));
 
+            // Optimistically update feedback immediately, real feedback from device will override
+            InputNumber = GetInputNumberFromName(commandString);
+            SyncSelectableInputs();
+
 			new CTimer((o) => InputPoll(), 300);
 			//InputPoll();
 	    }

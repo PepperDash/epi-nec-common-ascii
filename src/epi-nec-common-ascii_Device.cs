@@ -13,6 +13,7 @@ using PepperDash.Essentials.Core.Config;
 using PepperDash.Essentials.Core.Routing;
 using PepperDash.Essentials.Core.Bridges;
 using PepperDash.Essentials.Core.DeviceTypeInterfaces;
+using PepperDash.Core.Logging;
 
 namespace EpiNecCommonAscii  
 {
@@ -231,17 +232,38 @@ namespace EpiNecCommonAscii
 	
 			#endregion Communication data event handlers.  Comment out any that don't apply to the API type
 
+			PowerIsOnFeedback.OutputChange += PowerIsOnFeedback_OutputChange;
+
+			IsWarmingUpFeedback.OutputChange += IsWarmingUpFeedback_OutputChange;
+
+			IsCoolingDownFeedback.OutputChange += IsCoolingDownFeedback_OutputChange;
+
 			Debug.Console(0, this, "Constructing new {0} instance complete", name);
 			Debug.Console(0, new string('*', 80));
 			Debug.Console(0, new string('*', 80));
 		}
 
-		/// <summary>
-		/// Use the custom activiate to connect the device and start the comms monitor.
-		/// This method will be called when the device is built.
-		/// </summary>
-		/// <returns></returns>
-		public override bool CustomActivate()
+      	private void PowerIsOnFeedback_OutputChange(object sender, FeedbackEventArgs e)
+        {
+            this.LogInformation("PowerIsOnFeedback changed to {0}", PowerIsOnFeedback.BoolValue);
+        }
+        private void IsWarmingUpFeedback_OutputChange(object sender, FeedbackEventArgs e)
+        {
+            this.LogInformation("IsWarmingUpFeedback changed to {0}", IsWarmingUpFeedback.BoolValue);
+        }
+
+		private void IsCoolingDownFeedback_OutputChange(object sender, FeedbackEventArgs e)
+		{
+			this.LogInformation("IsCoolingDownFeedback changed to {0}", IsCoolingDownFeedback.BoolValue);
+		}
+
+
+        /// <summary>
+        /// Use the custom activiate to connect the device and start the comms monitor.
+        /// This method will be called when the device is built.
+        /// </summary>
+        /// <returns></returns>
+        public override bool CustomActivate()
 		{
 			// Essentials will handle the connect method to the device                       
 			Comms.Connect();

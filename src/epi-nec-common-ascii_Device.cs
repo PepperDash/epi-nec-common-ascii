@@ -459,6 +459,7 @@ namespace EpiNecCommonAscii
                 case "hdmiIn2":
                     return(3);
                 case "computer":
+                case "rgbIn1":
                     return(2);
                 default:
                     return (0);

@@ -79,7 +79,9 @@ namespace EpiNecCommonAscii
         public Dictionary<string, string> InputList { get; private set; }
 		private readonly NecAsciiInputs _inputs;
 		private CTimer _powerPollTimer;
+		private CTimer _powerPollTimeoutTimer;
 		private const int PowerPollIntervalMs = 200;
+		private const int PowerPollTimeoutMs = 30000;
 
         private bool _isWarming;
         public bool IsWarming
@@ -248,6 +250,8 @@ namespace EpiNecCommonAscii
       	private void PowerIsOnFeedback_OutputChange(object sender, FeedbackEventArgs e)
         {
             this.LogInformation("PowerIsOnFeedback changed to {0}", PowerIsOnFeedback.BoolValue);
+            IsWarming = false;
+            IsCooling = false;
 
             StopPowerPollTimer();
         }
@@ -639,6 +643,12 @@ namespace EpiNecCommonAscii
 		{
 			StopPowerPollTimer();
 			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 0, PowerPollIntervalMs);
+			_powerPollTimeoutTimer = new CTimer((o) =>
+			{
+				this.LogWarning("PowerPoll timed out after {0}ms with no feedback response", PowerPollTimeoutMs);
+				_powerPollTimeoutTimer = null;
+				StopPowerPollTimer();
+			}, null, PowerPollTimeoutMs, Timeout.Infinite);
 		}
 
 		private void StopPowerPollTimer()
@@ -646,6 +656,10 @@ namespace EpiNecCommonAscii
 			_powerPollTimer?.Stop();
 			_powerPollTimer?.Dispose();
 			_powerPollTimer = null;
+
+			_powerPollTimeoutTimer?.Stop();
+			_powerPollTimeoutTimer?.Dispose();
+			_powerPollTimeoutTimer = null;
 		}
 
         /// <summary>
@@ -653,7 +667,7 @@ namespace EpiNecCommonAscii
         /// </summary>
         public override void PowerOn()
         {
-            //if (PowerIsOn || IsWarming || IsCooling) return;
+            if (PowerIsOn || IsWarming || IsCooling) return;
 
 	        SendText("power on");
 
@@ -666,7 +680,7 @@ namespace EpiNecCommonAscii
 		/// </summary>
 	    public override void PowerOff()
 	    {
-	        //if (!PowerIsOn || IsWarming || IsCooling) return;
+	        if (!PowerIsOn || IsWarming || IsCooling) return;
 
             SendText("power off");
 

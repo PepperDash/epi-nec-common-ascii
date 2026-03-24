@@ -667,7 +667,8 @@ namespace EpiNecCommonAscii
         /// </summary>
         public override void PowerOn()
         {
-            if (PowerIsOn || IsWarming || IsCooling) return;
+            // _powerPollTimer running indicates a power transition is already in progress
+            if (PowerIsOn || _powerPollTimer != null) return;
 
 	        SendText("power on");
 
@@ -680,7 +681,8 @@ namespace EpiNecCommonAscii
 		/// </summary>
 	    public override void PowerOff()
 	    {
-	        if (!PowerIsOn || IsWarming || IsCooling) return;
+	        // _powerPollTimer running indicates a power transition is already in progress
+	        if (!PowerIsOn || _powerPollTimer != null) return;
 
             SendText("power off");
 

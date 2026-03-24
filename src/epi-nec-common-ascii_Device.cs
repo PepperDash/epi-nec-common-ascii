@@ -642,7 +642,7 @@ namespace EpiNecCommonAscii
 		private void StartPowerPollTimer()
 		{
 			StopPowerPollTimer();
-			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 0, PowerPollIntervalMs);
+			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 1000, PowerPollIntervalMs);
 			_powerPollTimeoutTimer = new CTimer((o) =>
 			{
 				this.LogWarning("PowerPoll timed out after {0}ms with no feedback response", PowerPollTimeoutMs);

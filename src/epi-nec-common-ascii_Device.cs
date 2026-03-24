@@ -176,6 +176,7 @@ namespace EpiNecCommonAscii
 			Debug.Console(0, this, "Constructing new {0} instance", name);
 
 			_inputs = new NecAsciiInputs();
+			//When the CurrentItemChanged event is invoked, it calls the InputSelect method with the CurrentItem string
 			_inputs.CurrentItemChanged += (sender, args) => InputSelect(new NecAsciiCommand(_inputs.CurrentItem));
 
 			// TODO [ ] Update the constructor as needed for the plugin device being developed
@@ -857,7 +858,14 @@ namespace EpiNecCommonAscii
 				{ RgbIn1, new NecAsciiSelectableItem(RgbIn1, RgbIn1Label, () => _isApplyingFeedback) }
 			};
 
-			_currentItem = null;
+			 foreach (var item in _items) //This creates delegates for each item that fire when item.Value.ItemUpdated is invoked
+				{
+					item.Value.ItemUpdated += (sender, args) => {
+						if (_isApplyingFeedback) return;
+						if ((sender as ISelectableItem)?.IsSelected == true)
+							CurrentItem = item.Key;
+					};
+				}
 		}
 
         public Dictionary<string, ISelectableItem> Items

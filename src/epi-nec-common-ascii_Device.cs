@@ -85,7 +85,7 @@ namespace EpiNecCommonAscii
             private set
             {
                 _isWarming = value;
-                IsWarmingUpFeedback.FireUpdate();
+                IsWarmingUpFeedback.FireUpdate();		
             }
         }
 
@@ -359,14 +359,21 @@ namespace EpiNecCommonAscii
             if (response.Contains("warming"))
             {
                 IsCooling = false;
-                PowerIsOn = false;
+                PowerIsOn = true;
+                IsWarming = true;
+                return;
+            }
+			if (response.Contains("busy"))
+            {
+                IsCooling = false;
+                PowerIsOn = true;
                 IsWarming = true;
                 return;
             }
             if (response.Contains("cooling"))
             {
                 IsWarming = false;
-                PowerIsOn = false;
+                PowerIsOn = true;
                 IsCooling = true;
                 return;
             }
@@ -383,7 +390,7 @@ namespace EpiNecCommonAscii
 	        {
                 IsWarming = false;
                 IsCooling = false;
-                PowerIsOn = true;
+                PowerIsOn = false;
                 return;
 	        }
 

@@ -144,7 +144,7 @@ namespace EpiNecCommonAscii
 				UpdateBooleanFeedback();
 				InputNumberFeedback.FireUpdate();
 				CurrentInputFeedback.FireUpdate();
-				Debug.Console(2, this, "newInputNumber {0}", _inputNumber);
+				this.LogVerbose("newInputNumber {0}", _inputNumber);
             }
         }
 		public List<BoolFeedback> InputFeedback;
@@ -178,7 +178,7 @@ namespace EpiNecCommonAscii
 		public NecCommonAsciiDevice(string key, string name, NecCommonAsciiDeviceConfigObject config, IBasicCommunication comms)
 			: base(key, name)
 		{
-			Debug.Console(0, this, "Constructing new {0} instance", name);
+			this.LogInformation("Constructing new {0} instance", name);
 
 			_inputs = new NecAsciiInputs();
 			//When the CurrentItemChanged event is invoked, it calls the InputSelect method with the CurrentItem string
@@ -242,9 +242,9 @@ namespace EpiNecCommonAscii
 
 			IsCoolingDownFeedback.OutputChange += IsCoolingDownFeedback_OutputChange;
 
-			Debug.Console(0, this, "Constructing new {0} instance complete", name);
-			Debug.Console(0, new string('*', 80));
-			Debug.Console(0, new string('*', 80));
+			this.LogInformation("Constructing new {0} instance complete", name);
+			this.LogInformation(new string('*', 80));
+			this.LogInformation(new string('*', 80));
 		}
 
       	private void PowerIsOnFeedback_OutputChange(object sender, FeedbackEventArgs e)
@@ -314,7 +314,7 @@ namespace EpiNecCommonAscii
 
 				var responseType = parts[0].ToLower();
 				var responseValue = parts[1].ToLower();
-				Debug.Console(2, this, "responseType ={0} responseValue ={1}", responseType, responseValue);
+				this.LogVerbose("responseType ={0} responseValue ={1}", responseType, responseValue);
 				if (responseType.Contains("power")) UpdatePower(responseValue);
 				else if (responseType.Contains("input")) UpdateInput(responseValue);
 				else if (responseType.Contains("status")) UpdateStatus(responseValue);
@@ -365,7 +365,7 @@ namespace EpiNecCommonAscii
 			}
 			catch (Exception e)
 			{
-				Debug.Console(0, this, "Exception Here - {0}", e.Message);
+				this.LogInformation("Exception Here - {0}", e.Message);
 			}
 		}
         private void UpdateStatus(string response)
@@ -430,7 +430,7 @@ namespace EpiNecCommonAscii
 
 	    private void UpdateInput(string response)
 	    {
-			Debug.Console(2, this, "UpdateInput {0}", response);
+			this.LogVerbose("UpdateInput {0}", response);
 			InputNumber = GetInputNumberFromName(response);
 			SyncSelectableInputs();
 	    }
@@ -551,16 +551,19 @@ namespace EpiNecCommonAscii
 
 	    public void InputSelect(NecAsciiCommand command)
 	    {
-			
-	        if (command == null) return;
+			this.LogVerbose("InputSelect called. Command: {0}, PowerIsOn: {1}",
+				command?.Command ?? "null", PowerIsOn);
+
+	        if (command == null) { this.LogVerbose("InputSelect - command is null, returning"); return; }
 
 	        var commandString = command.Command;
 
-	        if (commandString == string.Empty ||!InputList.ContainsKey(commandString)) return;
+	        if (commandString == string.Empty ||!InputList.ContainsKey(commandString)) { this.LogVerbose("InputSelect - command '{0}' is empty or not in InputList, returning", commandString); return; }
 
             //Input already selected, prevent resend which will blink display for a second
-            if (InputNumber == GetInputNumberFromName(commandString)) return;
+            if (InputNumber == GetInputNumberFromName(commandString)) { this.LogVerbose("InputSelect - input '{0}' already selected (InputNumber: {1}), skipping", commandString, InputNumber); return; }
 
+            this.LogVerbose("InputSelect - Sending 'input {0}' to device", InputList[commandString]);
             SendText(string.Format("input {0}",InputList[commandString]));
 
             // Optimistically update feedback immediately, real feedback from device will override
@@ -572,29 +575,50 @@ namespace EpiNecCommonAscii
 	    }
 		public override void ExecuteSwitch(object selector)
 	    {
-			Debug.Console(2, this, "ExecuteSwitch");
-			if (selector is Action)
-				(selector as Action).Invoke();
-			else
-				Debug.Console(1, this, "WARNING: ExecuteSwitch cannot handle type {0}", selector.GetType());
-			/*
-	        if (!PowerIsOnFeedback.BoolValue)
-	        {
-	            EventHandler<FeedbackEventArgs> handler = null;
-	            handler = (o, a) =>
-	                          {
-	                              if (!PowerIsOnFeedback.BoolValue) return;
-	                              PowerIsOnFeedback.OutputChange -= handler;
-	                              var action = selector as Action;
-	                              if (action != null) action();
-	                          };
-	            PowerIsOnFeedback.OutputChange += handler;
-                PowerOn();
-	            return;
-	        }
+			this.LogVerbose("ExecuteSwitch called. Selector type: {0}, PowerIsOn: {1}, IsWarming: {2}",
+				selector?.GetType().Name ?? "null", PowerIsOn, IsWarming);
 
-	        PowerOn();
-			*/ 
+			if (PowerIsOn)
+			{
+				var handler = selector as Action;
+
+				if (handler == null)
+				{
+					this.LogWarning("ExecuteSwitch - Unable to switch using selector {0}", selector);
+					return;
+				}
+
+				this.LogVerbose("ExecuteSwitch - Power is on, invoking Action immediately");
+				handler();
+			}
+			else
+			{
+				this.LogVerbose("ExecuteSwitch - Power is off, queuing input switch and powering on");
+				EventHandler<FeedbackEventArgs> handler = null;
+				var inputSelector = selector as Action;
+				handler = (o, a) =>
+				{
+					if (IsWarming)
+					{
+						this.LogVerbose("ExecuteSwitch - Still warming up, waiting...");
+						return;
+					}
+
+					IsWarmingUpFeedback.OutputChange -= handler;
+					this.LogVerbose("ExecuteSwitch - Warm-up complete, invoking queued input switch");
+
+					if (inputSelector == null)
+					{
+						this.LogWarning("ExecuteSwitch - inputSelector is null, cannot switch");
+						return;
+					}
+
+					inputSelector();
+				};
+
+				IsWarmingUpFeedback.OutputChange += handler;
+				PowerOn();
+			}
 	    }
 
 		public void InputPoll()
@@ -674,9 +698,12 @@ namespace EpiNecCommonAscii
         /// </summary>
         public override void PowerOn()
         {
+            this.LogVerbose("PowerOn called. PowerIsOn: {0}, _powerPollTimer is null: {1}",
+                PowerIsOn, _powerPollTimer == null);
             // _powerPollTimer running indicates a power transition is already in progress
-            if (PowerIsOn || _powerPollTimer != null) return;
+            if (PowerIsOn || _powerPollTimer != null) { this.LogVerbose("PowerOn - skipping (already on or transition in progress)"); return; }
 
+            this.LogVerbose("PowerOn - Sending 'power on' to device");
 	        SendText("power on");
 
 			StartPowerPollTimer();

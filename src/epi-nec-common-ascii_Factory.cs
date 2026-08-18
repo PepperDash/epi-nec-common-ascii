@@ -23,8 +23,7 @@ namespace EpiNecCommonAscii
 		public NecCommonAsciiDevicePluginFactory()
 		{
 			// Set the minimum Essentials Framework Version
-			// TODO [ ] Update the Essentials minimum framework version which this plugin has been tested against
-			MinimumEssentialsFrameworkVersion  = "1.6.5";
+			MinimumEssentialsFrameworkVersion  = "3.0.0-rc.1";
 
 			// In the constructor we initialize the list with the typenames that will build an instance of this device
 			// only include unique typenames, when the constructur is used all the typenames will be evaluated in lower case.
@@ -46,14 +45,14 @@ namespace EpiNecCommonAscii
 		{
 			try
 			{
-				Debug.Console(0, new string('*', 80));
-				Debug.Console(0, new string('*', 80));
-				Debug.Console(0, "[{0}] Factory Attempting to create new device from type: {1}", dc.Key, dc.Type);				
+				Debug.LogDebug(new string('*', 80));
+				Debug.LogDebug(new string('*', 80));
+				Debug.LogDebug("[{Key}] Factory Attempting to create new device from type: {Type}", dc.Key, dc.Type);				
 				
 				var propertiesConfig = dc.Properties.ToObject<NecCommonAsciiDeviceConfigObject>();
 				if (propertiesConfig == null)
 				{
-					Debug.Console(0, "[{0}] Factory: failed to read properties config for {1}", dc.Key, dc.Name);
+					Debug.LogError("[{Key}] Factory: failed to read properties config for {Name}", dc.Key, dc.Name);
 					return null;
 				}
 				
@@ -63,7 +62,7 @@ namespace EpiNecCommonAscii
 				var controlConfig = CommFactory.GetControlPropertiesConfig(dc);
 				if (controlConfig == null)
 				{
-					Debug.Console(0, "[{0}] Factory: failed to read control config for {1}", dc.Key, dc.Name);
+					Debug.LogDebug("[{Key}] Factory: failed to read control config for {Name}", dc.Key, dc.Name);
 				}
 				// TODO [ ] If using an unsupported PepperDash.Core.eControlMethod, you can selective pull property values out of the JSON control block with the examples below			
 				else if(controlConfig.Method.ToString().Contains("http"))
@@ -71,11 +70,11 @@ namespace EpiNecCommonAscii
 					
 					var address = controlConfig.TcpSshProperties.Address;
 					var port = controlConfig.TcpSshProperties.Port;
-					Debug.Console(0, "[{0}] {1} will attempt to connect using: {2}:{3}", dc.Key, dc.Name, address, port);
+					Debug.LogDebug("[{Key}] {Name} will attempt to connect using: {Address}:{Port}", dc.Key, dc.Name, address, port);
 
 					var username = controlConfig.TcpSshProperties.Username;
-					var password = controlConfig.TcpSshProperties.Password;
-					Debug.Console(1, "[{0}] {1} will attempt to use authorization credentials: {2}:{3}", dc.Key, dc.Name, username, password);
+					// Password intentionally omitted from the log - avoid writing credentials to logs.
+					Debug.LogDebug("[{Key}] {Name} will attempt to use authorization credentials for user: {Username}", dc.Key, dc.Name, username);
 
 					// TODO [ ] Update with the proper constructor to instantiate the device using HTTPS
 					throw new NotImplementedException();
@@ -85,12 +84,12 @@ namespace EpiNecCommonAscii
 				// build the plugin device comms (for all other comms methods) & check for null			
 				var comms = CommFactory.CreateCommForDevice(dc);
                 if (comms != null) return new NecCommonAsciiDevice(dc.Key, dc.Name, propertiesConfig, comms);
-				Debug.Console(0, "[{0}] Factory: failed to create comm for {1}", dc.Key, dc.Name);
+				Debug.LogError("[{Key}] Factory: failed to create comm for {Name}", dc.Key, dc.Name);
 				return null;
 			}
 			catch (Exception ex)
 			{
-				Debug.Console(0, "[{0}] Factory BuildDevice Exception: {1}", dc.Key, ex);
+				Debug.LogError(ex, "[{Key}] Factory BuildDevice Exception", dc.Key);
 				return null;
 			}
 		}

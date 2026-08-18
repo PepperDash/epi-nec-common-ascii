@@ -24,6 +24,11 @@
     ]
   ],  
   "branches": [
-    "main"
+    "main",
+    {
+      "name": "feature/*",
+      "prerelease": "beta",
+      "channel": "beta"
+    }
   ]
 }

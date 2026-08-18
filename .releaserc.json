@@ -26,8 +26,8 @@
   "branches": [
     "main",
     {
-      "name": "feature/*",
-      "prerelease": "beta",
+      "name": "feature/essentials-v2",
+      "prerelease": "feature-essentials-v2",
       "channel": "beta"
     }
   ]

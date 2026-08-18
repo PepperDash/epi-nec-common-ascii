@@ -26,9 +26,9 @@
   "branches": [
     "main",
     {
-      "name": "feature/essentials-v2",
-      "prerelease": "feature-essentials-v2",
-      "channel": "beta"
+      "name": "replace-me-feature-branch",
+      "prerelease": "replace-me-prerelease",
+      "channel": "replace-me-prerelease"
     }
   ]
 }

@@ -1,0 +1,21 @@
+<Project>
+  <PropertyGroup>
+    <Version>1.0.0-local</Version>
+    <InformationalVersion>$(Version)</InformationalVersion>
+    <Authors>PepperDash Technologies</Authors>
+    <Company>PepperDash Technologies</Company>
+    <Product>PepperDash NEC Common ASCII Display</Product>
+    <Copyright>Copyright © 2026</Copyright>
+    <RepositoryUrl>https://github.com/PepperDash-Engineering/epi-nec-common-ascii</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>Crestron;4series;nec;display</PackageTags>
+    <PackageOutputPath>$(MSBuildThisFileDirectory)..\output</PackageOutputPath>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\LICENSE.md" Pack="true" PackagePath="" />
+    <None Include="$(MSBuildThisFileDirectory)..\README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+</Project>

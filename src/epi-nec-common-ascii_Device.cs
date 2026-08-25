@@ -271,7 +271,7 @@ namespace EpiNecCommonAscii
         /// This method will be called when the device is built.
         /// </summary>
         /// <returns></returns>
-        public override bool CustomActivate()
+        protected override bool CustomActivate()
 		{
 			// Essentials will handle the connect method to the device                       
 			Comms.Connect();
@@ -298,7 +298,6 @@ namespace EpiNecCommonAscii
 		private void Handle_LineRecieved(object sender, GenericCommMethodReceiveTextArgs args)
 		{
 			// TODO [ ] Implement method 
-			//Debug.Console(2, this, "Handle_LineRecieved {0} ", args.Text);
 
 			if (args.Text.Contains("error:busy") && _powerPollTimer != null) //device often sends this instead of power warming
 			{
@@ -440,7 +439,6 @@ namespace EpiNecCommonAscii
 			if (string.IsNullOrEmpty(text)) return;
 
 			Comms.SendText(string.Format("{0}{1}", text, CommsDelimiter));
-			//Debug.Console(2, this, "SendText {0}", text);
 		}
 
 		/// <summary>

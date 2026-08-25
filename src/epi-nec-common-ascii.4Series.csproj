@@ -3,7 +3,7 @@
     <ProjectType>ProgramLibrary</ProjectType>
   </PropertyGroup>
   <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
+    <TargetFramework>net8</TargetFramework>
     <RootNamespace>EpiNecCommonAscii</RootNamespace>
     <Deterministic>false</Deterministic>
     <AssemblyTitle>NEC Common ASCII</AssemblyTitle>
@@ -18,9 +18,6 @@
     <PackageProjectUrl>https://github.com/PepperDash-Engineering/epi-nec-common-ascii</PackageProjectUrl>
     <PackageTags>crestron 4series nec display</PackageTags>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants>$(DefineConstants);SERIES4</DefineConstants>
-  </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Properties\**" />
     <Compile Remove="ResponseHandling\AVMuteResponse.cs" />
@@ -33,7 +30,7 @@
     <None Remove="*.projectinfo" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="PepperDashEssentials" Version="2.24.4">
+    <PackageReference Include="PepperDashEssentials" Version="3.0.0-feat-update-ihaswebview.1">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
   </ItemGroup>

@@ -23,7 +23,7 @@ namespace EpiNecCommonAscii
 		public NecCommonAsciiDevicePluginFactory()
 		{
 			// Set the minimum Essentials Framework Version
-			MinimumEssentialsFrameworkVersion  = "3.0.0-rc.1";
+			MinimumEssentialsFrameworkVersion  = "3.0.0";
 
 			// In the constructor we initialize the list with the typenames that will build an instance of this device
 			// only include unique typenames, when the constructur is used all the typenames will be evaluated in lower case.

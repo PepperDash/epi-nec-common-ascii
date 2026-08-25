@@ -8,7 +8,7 @@ public class FactoryMetadataTests
 {
     // Matches the pinned prerelease this plugin actually targets - NOT a bare "3.0.0", which
     // doesn't exist as a shipped Essentials version.
-    private const string ExpectedMinimumEssentialsFrameworkVersion = "3.0.0-rc.1";
+    private const string ExpectedMinimumEssentialsFrameworkVersion = "3.0.0";
 
     [Theory]
     [InlineData("NecCommonAsciiDevicePluginFactory")]

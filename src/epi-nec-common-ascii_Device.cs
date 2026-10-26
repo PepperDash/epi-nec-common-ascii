@@ -297,6 +297,21 @@ namespace EpiNecCommonAscii
 		
 		private void Handle_LineRecieved(object sender, GenericCommMethodReceiveTextArgs args)
 		{
+			// This runs on the comms receive thread: an exception escaping here stops all further
+			// replies from being processed until the connection is re-established.
+			try
+			{
+				ProcessLine(args);
+			}
+			catch (Exception ex)
+			{
+				this.LogError("Handle_LineRecieved: unable to process '{0}': {1}", args.Text, ex.Message);
+				this.LogVerbose(ex, "Handle_LineRecieved exception");
+			}
+		}
+
+		private void ProcessLine(GenericCommMethodReceiveTextArgs args)
+		{
 			// TODO [ ] Implement method 
 			//Debug.Console(2, this, "Handle_LineRecieved {0} ", args.Text);
 
@@ -342,7 +357,16 @@ namespace EpiNecCommonAscii
 				}
 				else if (responseType.Contains("usage"))
 				{
-					LampHours = Int16.Parse(parts[3].Trim());
+					// e.g. "usage light hours 40000"
+					int hours;
+					if (parts.Length > 3 && int.TryParse(parts[3].Trim(), out hours))
+					{
+						LampHours = hours;
+					}
+					else
+					{
+						this.LogWarning("Unable to parse lamp hours from '{0}'", dataReceived);
+					}
 				}
 			}
 		}

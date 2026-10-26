@@ -520,8 +520,9 @@ namespace EpiNecCommonAscii
 
         private int GetInputNumberFromName(string name)
         {
-            // name is lower-cased by the caller, so every label here must be lower-case.
-            switch(name)
+            // Replies arrive lower-cased, but InputSelect passes routing names such as hdmiIn1,
+            // so compare without case.
+            switch((name ?? string.Empty).ToLowerInvariant())
             {
                 case "hdmi1":
                 case "hdmiin1":

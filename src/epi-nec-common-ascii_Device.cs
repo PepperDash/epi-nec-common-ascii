@@ -213,6 +213,7 @@ namespace EpiNecCommonAscii
 			Comms = comms;
 
 			CommunicationMonitor = new GenericCommunicationMonitor(this, Comms, 5000, 120000, 300000, Poll);
+			CommunicationMonitor.StatusChange += CommunicationMonitor_StatusChange;
 
 			var socket = Comms as ISocketStatus;
 			if (socket != null)
@@ -279,6 +280,15 @@ namespace EpiNecCommonAscii
 			CommunicationMonitor.Start();
 
 			return base.CustomActivate();
+		}
+
+		private void CommunicationMonitor_StatusChange(object sender, MonitorStatusChangeEventArgs args)
+		{
+			if (OnlineFeedback != null)
+				OnlineFeedback.FireUpdate();
+
+			if (MonitorStatusFeedback != null)
+				MonitorStatusFeedback.FireUpdate();
 		}
 
 		private void socket_ConnectionChange(object sender, GenericSocketStatusChageEventArgs args)

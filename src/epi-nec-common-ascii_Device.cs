@@ -520,16 +520,17 @@ namespace EpiNecCommonAscii
 
         private int GetInputNumberFromName(string name)
         {
+            // name is lower-cased by the caller, so every label here must be lower-case.
             switch(name)
             {
                 case "hdmi1":
-                case "hdmiIn1":
+                case "hdmiin1":
                     return(1);
                 case "hdmi2":
-                case "hdmiIn2":
+                case "hdmiin2":
                     return(3);
                 case "computer":
-                case "rgbIn1":
+                case "rgbin1":
                     return(2);
                 default:
                     return (0);

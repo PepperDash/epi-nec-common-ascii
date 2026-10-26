@@ -338,31 +338,33 @@ namespace EpiNecCommonAscii
 				var parts = dataReceived.Split(' ');
 
 				var responseType = parts[0].ToLower();
-				var responseValue = parts[1].ToLower();
+				var responseValue = GetCurrentValue(parts[1].ToLower());
 				this.LogVerbose("responseType ={0} responseValue ={1}", responseType, responseValue);
 				if (responseType.Contains("power")) UpdatePower(responseValue);
 				else if (responseType.Contains("input")) UpdateInput(responseValue);
 				else if (responseType.Contains("status")) UpdateStatus(responseValue);
 				else if (responseType.Contains("shutter"))
 				{
-					if (responseValue.Contains("open"))
+					switch (responseValue)
 					{
-						VideoMuteState = false;
-					}
-					else if (responseValue.Contains("close"))
-					{
-						VideoMuteState = true;
+						case "open":
+							VideoMuteState = false;
+							break;
+						case "close":
+							VideoMuteState = true;
+							break;
 					}
 				}
 				else if (responseType.Contains("freeze"))
 				{
-					if (responseValue.Contains("off"))
+					switch (responseValue)
 					{
-						FreezeImageState = false;
-					}
-					else if (responseValue.Contains("on"))
-					{
-						FreezeImageState = true;
+						case "off":
+							FreezeImageState = false;
+							break;
+						case "on":
+							FreezeImageState = true;
+							break;
 					}
 				}
 				else if (responseType.Contains("usage"))
@@ -411,55 +413,46 @@ namespace EpiNecCommonAscii
             UpdatePower(statusMsg[0].ToLower());
         }
 
+		// Replies to "<command> ?" look like "cur=off,sel=on|off"; the current value follows "cur=".
+		private static string GetCurrentValue(string value)
+		{
+			value = value.Trim();
+			return value.StartsWith("cur=") ? value.Substring(4).Split(',')[0] : value;
+		}
+
 	    private void UpdatePower(string response)
 	    {
-            if (response.Contains("on"))
-            {
-                PowerIsOn = true;
-                return;
-            }
-            if (response.Contains("off"))
-            {
-				PowerIsOn = false;
-                return;
-            }
-            if (response.Contains("warming"))
-            {
-                IsCooling = false;
-                IsWarming = true;
-                return;
-            }
-			if (response.Contains("busy"))
-            {
-                IsCooling = false;
-                IsWarming = true;
-                return;
-            }
-            if (response.Contains("cooling"))
-            {
-                IsWarming = false;
-                IsCooling = true;
-                return;
-            }
-
-	        if (response.Contains("running"))
-	        {
-                IsWarming = false;
-                IsCooling = false;
-                return;
-	        }
-
-	        if (response.Contains("standby"))
-	        {
-                IsWarming = false;
-                IsCooling = false;
-                PowerIsOn = false;
-                return;
-	        }
-
-            IsWarming = false;
-            PowerIsOn = false;
-            IsCooling = false;
+			// Match the whole value: help replies such as "[on|off|?]" must not change the power state.
+			switch (response.Trim())
+			{
+				case "on":
+					PowerIsOn = true;
+					break;
+				case "off":
+					PowerIsOn = false;
+					break;
+				case "warming":
+				case "busy":
+					IsCooling = false;
+					IsWarming = true;
+					break;
+				case "cooling":
+					IsWarming = false;
+					IsCooling = true;
+					break;
+				case "running":
+					IsWarming = false;
+					IsCooling = false;
+					break;
+				case "standby":
+					IsWarming = false;
+					IsCooling = false;
+					PowerIsOn = false;
+					break;
+				default:
+					this.LogVerbose("UpdatePower: ignoring '{0}'", response);
+					break;
+			}
 	    }
 
 	    private void UpdateInput(string response)

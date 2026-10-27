@@ -83,8 +83,12 @@ namespace EpiNecCommonAscii
 		// Latest input switch not yet made: runs at once when power is on, otherwise when power on is reported.
 		private Action _pendingSwitch;
 		private readonly object _switchLock = new object();
-		// An input selected while it already showed as selected, waiting for the next input reply to confirm it.
+		// An input selected while it already showed as selected. Until _inputToConfirmUntil, an input reply showing
+		// another input switches to it. Guarded by _inputLock.
 		private string _inputToConfirm;
+		private DateTime _inputToConfirmUntil;
+		private const int InputConfirmWindowMs = 5000;
+		private readonly object _inputLock = new object();
 
         private bool _isWarming;
         public bool IsWarming
@@ -482,15 +486,31 @@ namespace EpiNecCommonAscii
 	    private void UpdateInput(string response)
 	    {
 			this.LogVerbose("UpdateInput {0}", response);
-			InputNumber = GetInputNumberFromName(response);
-			SyncSelectableInputs();
 
-			// An input selected while it showed as selected: switch now if the display reports another one.
-			var toConfirm = System.Threading.Interlocked.Exchange(ref _inputToConfirm, null);
-			if (toConfirm != null && GetInputNumberFromName(toConfirm) != InputNumber)
+			// Under _inputLock with InputSelect, so a confirmation can't send an input after a newer selection.
+			lock (_inputLock)
 			{
-				this.LogInformation("InputSelect - display reports '{0}', not the selected '{1}'; switching", response, toConfirm);
-				InputSelect(new NecAsciiCommand(toConfirm));
+				InputNumber = GetInputNumberFromName(response);
+				SyncSelectableInputs();
+
+				if (_inputToConfirm == null)
+					return;
+
+				if (DateTime.UtcNow > _inputToConfirmUntil)
+				{
+					_inputToConfirm = null;
+					return;
+				}
+
+				// A reply showing the selected input doesn't end the confirmation: it may answer a query sent before
+				// the selection. The first reply in the window showing another input switches to the selected one.
+				if (GetInputNumberFromName(_inputToConfirm) != InputNumber)
+				{
+					var toConfirm = _inputToConfirm;
+					_inputToConfirm = null;
+					this.LogInformation("InputSelect - display reports '{0}', not the selected '{1}'; switching", response, toConfirm);
+					InputSelect(new NecAsciiCommand(toConfirm));
+				}
 			}
 	    }
 	
@@ -628,26 +648,31 @@ namespace EpiNecCommonAscii
 
 	        if (commandString == string.Empty ||!InputList.ContainsKey(commandString)) { this.LogVerbose("InputSelect - command '{0}' is empty or not in InputList, returning", commandString); return; }
 
-            // Input already shows as selected. Resending would blink the display for a second, but the feedback can
-            // be stale (input polls every 10 s, and some displays answer "error:busy" just after an input change).
-            // Query the input instead; UpdateInput sends the switch if the display is on another one.
-            if (InputNumber == GetInputNumberFromName(commandString))
-            {
-                this.LogInformation("InputSelect - input '{0}' already shows as selected (InputNumber: {1}); querying input to confirm", commandString, InputNumber);
-                System.Threading.Interlocked.Exchange(ref _inputToConfirm, commandString);
-                InputPoll();
-                return;
-            }
+			// Selections and confirmations (UpdateInput) are serialized, so the newest selection is the last sent.
+			lock (_inputLock)
+			{
+	            // Input already shows as selected. Resending would blink the display for a second, but the feedback can
+	            // be stale (input polls every 10 s, and some displays answer "error:busy" just after an input change).
+	            // Query the input instead; UpdateInput sends the switch if the display reports another one in time.
+	            if (InputNumber == GetInputNumberFromName(commandString))
+	            {
+	                this.LogInformation("InputSelect - input '{0}' already shows as selected (InputNumber: {1}); querying input to confirm", commandString, InputNumber);
+	                _inputToConfirm = commandString;
+	                _inputToConfirmUntil = DateTime.UtcNow.AddMilliseconds(InputConfirmWindowMs);
+	                InputPoll();
+	                return;
+	            }
 
-            // A newer selection replaces one waiting to be confirmed.
-            System.Threading.Interlocked.Exchange(ref _inputToConfirm, null);
+	            // A newer selection replaces one waiting to be confirmed.
+	            _inputToConfirm = null;
 
-            this.LogVerbose("InputSelect - Sending 'input {0}' to device", InputList[commandString]);
-            SendText(string.Format("input {0}",InputList[commandString]));
+	            this.LogVerbose("InputSelect - Sending 'input {0}' to device", InputList[commandString]);
+	            SendText(string.Format("input {0}",InputList[commandString]));
 
-            // Optimistically update feedback immediately, real feedback from device will override
-            InputNumber = GetInputNumberFromName(commandString);
-            SyncSelectableInputs();
+	            // Optimistically update feedback immediately, real feedback from device will override
+	            InputNumber = GetInputNumberFromName(commandString);
+	            SyncSelectableInputs();
+			}
 
 			new CTimer((o) => InputPoll(), 300);
 			//InputPoll();

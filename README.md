@@ -214,7 +214,7 @@ By default the plugin exposes HDMI 1 (`hdmiIn1`), HDMI 2 (`hdmiIn2`) and RGB (`r
 - Inputs keep the order HDMI 1, HDMI 2, RGB, HDBaseT, whatever order the config lists them in.
 - Unknown keys are logged as a warning and ignored.
 - If the projector switches to an input that isn't exposed (for example from its remote), no input shows as selected.
-- Selecting the input that already shows as selected queries `input` instead of resending it, which would blink the display. If the projector reports another input (its remote changed it, or the last reply was `>error:busy`), the plugin then switches it. It keeps querying once a second while replies are busy, for up to 10 s.
+- Every input selection is checked against the projector's `input` replies for up to 10 s. If a reply shows another input (its remote changed it, or the switch was answered `>error:busy`), the plugin sends the switch again, and while replies are busy it queries `input` once a second. It stops after two replies show the selected input. Selecting the input that already shows as selected queries `input` first instead of resending it, which would blink the display.
 
 The bridge's input select joins (digital `InputSelectOffset` and analog `InputSelect`) follow the exposed inputs in that order. Join 1 is the first exposed input, and the feedback on each join matches the input that join selects.
 

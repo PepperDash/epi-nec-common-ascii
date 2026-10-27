@@ -80,8 +80,9 @@ namespace EpiNecCommonAscii
 		private readonly NecAsciiInputs _inputs;
 		private CTimer _powerPollTimer;
 		private CTimer _powerPollTimeoutTimer;
-		// Input switch requested while power was off; runs when power on is reported.
+		// Latest input switch not yet made: runs at once when power is on, otherwise when power on is reported.
 		private Action _pendingSwitch;
+		private readonly object _switchLock = new object();
 
         private bool _isWarming;
         public bool IsWarming
@@ -273,7 +274,7 @@ namespace EpiNecCommonAscii
             StopPowerPollTimer();
 
             if (PowerIsOn)
-                RunPendingSwitch();
+                RunPendingSwitch("power on reported");
             else
                 CancelPendingSwitch("power went off");
         }
@@ -634,58 +635,56 @@ namespace EpiNecCommonAscii
 			this.LogVerbose("ExecuteSwitch called. Selector type: {0}, PowerIsOn: {1}, IsWarming: {2}",
 				selector?.GetType().Name ?? "null", PowerIsOn, IsWarming);
 
+			var inputSelector = selector as Action;
+			if (inputSelector == null)
+			{
+				this.LogWarning("ExecuteSwitch - Unable to switch using selector {0}", selector);
+				return;
+			}
+
+			// Every switch goes through _pendingSwitch, replacing any earlier one still waiting, so only the
+			// latest selection is made. It runs now if power is on, otherwise when power on is reported.
+			lock (_switchLock)
+			{
+				_pendingSwitch = inputSelector;
+			}
+
+			// Checked after storing the switch: if power on was reported in between, the feedback handler found
+			// nothing to run.
 			if (PowerIsOn)
 			{
-				var handler = selector as Action;
-
-				if (handler == null)
-				{
-					this.LogWarning("ExecuteSwitch - Unable to switch using selector {0}", selector);
-					return;
-				}
-
-				this.LogVerbose("ExecuteSwitch - Power is on, invoking Action immediately");
-				handler();
+				RunPendingSwitch("power is on");
+				return;
 			}
-			else
-			{
-				var inputSelector = selector as Action;
-				if (inputSelector == null)
-				{
-					this.LogWarning("ExecuteSwitch - Unable to switch using selector {0}", selector);
-					return;
-				}
 
-				// Runs when power on is reported. Replaces any earlier switch still waiting, so only the latest
-				// selection is made.
-				this.LogVerbose("ExecuteSwitch - Power is off, queuing input switch and powering on");
-				System.Threading.Interlocked.Exchange(ref _pendingSwitch, inputSelector);
-
-				// Power on may have been reported between the check above and storing the switch, in which case
-				// the feedback handler found nothing to run.
-				if (PowerIsOn)
-				{
-					RunPendingSwitch();
-					return;
-				}
-
-				PowerOn();
-			}
+			this.LogVerbose("ExecuteSwitch - Power is off, queuing input switch and powering on");
+			PowerOn();
 	    }
 
-		private void RunPendingSwitch()
+		// Runs under _switchLock so a switch run from the power feedback and one from ExecuteSwitch can't
+		// overlap and finish out of order.
+		private void RunPendingSwitch(string reason)
 		{
-			var pending = System.Threading.Interlocked.Exchange(ref _pendingSwitch, null);
-			if (pending == null) return;
+			lock (_switchLock)
+			{
+				var pending = _pendingSwitch;
+				_pendingSwitch = null;
+				if (pending == null) return;
 
-			this.LogVerbose("ExecuteSwitch - Power on reported, invoking queued input switch");
-			pending();
+				this.LogVerbose("ExecuteSwitch - {0}, invoking input switch", reason);
+				pending();
+			}
 		}
 
 		private void CancelPendingSwitch(string reason)
 		{
-			if (System.Threading.Interlocked.Exchange(ref _pendingSwitch, null) != null)
-				this.LogWarning("ExecuteSwitch - Dropping queued input switch: {0}", reason);
+			lock (_switchLock)
+			{
+				if (_pendingSwitch == null) return;
+				_pendingSwitch = null;
+			}
+
+			this.LogWarning("ExecuteSwitch - Dropping queued input switch: {0}", reason);
 		}
 
 		public void InputPoll()

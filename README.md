@@ -216,6 +216,13 @@ By default the plugin exposes HDMI 1 (`hdmiIn1`), HDMI 2 (`hdmiIn2`) and RGB (`r
 
 The bridge's input select joins (digital `InputSelectOffset` and analog `InputSelect`) follow the exposed inputs in that order. Join 1 is the first exposed input, and the feedback on each join matches the input that join selects.
 
+#### Polling
+
+Every 5 s the plugin queries `power`, then `shutter`, then `input` or `usage light hours` on alternate ticks.
+
+- The `shutter` query is skipped while power is off. Some displays (for example the PA804UL in deep standby) answer it with `>error:command - try 'help'`.
+- For displays with no shutter, set `"pollShutter": false` to never query it. It defaults to `true`.
+
 ### Plugin Bridge Configuration Object
 
 Update the bridge configuration object as needed for the plugin being developed.

@@ -174,7 +174,11 @@ namespace EpiNecCommonAscii
 			}
 		}
 		private int PollState = 0;
-	
+
+		// Commands go out at least this far apart; see NecCommandQueue.
+		private const int CommandGapMs = 300;
+		private readonly NecCommandQueue _commandQueue;
+
 		public NecCommonAsciiDevice(string key, string name, NecCommonAsciiDeviceConfigObject config, IBasicCommunication comms)
 			: base(key, name)
 		{
@@ -218,6 +222,11 @@ namespace EpiNecCommonAscii
 			
 
 			Comms = comms;
+			_commandQueue = new NecCommandQueue(
+				CommandGapMs,
+				text => Comms.SendText(string.Format("{0}{1}", text, CommsDelimiter)),
+				(ms, elapsed) => new CTimer(o => elapsed(), ms),
+				(text, ex) => this.LogError("Unable to send '{0}': {1}", text, ex.Message));
 
 			CommunicationMonitor = new GenericCommunicationMonitor(this, Comms, 5000, 120000, 300000, Poll);
 			CommunicationMonitor.StatusChange += CommunicationMonitor_StatusChange;
@@ -300,6 +309,10 @@ namespace EpiNecCommonAscii
 
 		private void socket_ConnectionChange(object sender, GenericSocketStatusChageEventArgs args)
 		{
+			// Commands queued before a drop are stale by the time it reconnects.
+			if (!Comms.IsConnected)
+				_commandQueue.Clear();
+
 			if (ConnectFeedback != null)
 				ConnectFeedback.FireUpdate();
 
@@ -472,7 +485,15 @@ namespace EpiNecCommonAscii
 		{
 			if (string.IsNullOrEmpty(text)) return;
 
-			Comms.SendText(string.Format("{0}{1}", text, CommsDelimiter));
+			_commandQueue.Enqueue(text);
+		}
+
+		/// <summary>
+		/// Sends a status query. It's dropped if the same query is already waiting to go out.
+		/// </summary>
+		private void SendQuery(string text)
+		{
+			_commandQueue.Enqueue(text, skipIfPending: true);
 		}
 
 		/// <summary>
@@ -487,7 +508,7 @@ namespace EpiNecCommonAscii
 				PollState = 0;
 
 			foreach (var command in NecPollPlan.GetCommands(PollState, PowerIsOn, _config.PollShutter))
-				SendText(command);
+				SendQuery(command);
 
 			PollState = (PollState + 1) % NecPollPlan.StateCount;
 		}
@@ -653,7 +674,7 @@ namespace EpiNecCommonAscii
 
 		public void InputPoll()
 		{
-			SendText("input");
+			SendQuery("input");
 		}
 		protected override Func<bool> PowerIsOnFeedbackFunc
 		{
@@ -772,7 +793,7 @@ namespace EpiNecCommonAscii
 		/// </summary>
 		public void PowerPoll()
 		{
-			SendText("power");
+			SendQuery("power");
 		}
 
 		/// <summary>
@@ -809,11 +830,11 @@ namespace EpiNecCommonAscii
 
 		public void VideoMutePoll()
 		{
-			SendText("shutter");
+			SendQuery("shutter");
 		}
 		public void LightUsagePoll()
 		{
-			SendText("usage light hours");
+			SendQuery("usage light hours");
 		}
 		public void FreezeImageOn()
 		{
@@ -838,7 +859,7 @@ namespace EpiNecCommonAscii
 		}
 		public void FreezeImagePoll()
 		{
-			SendText("freeze");
+			SendQuery("freeze");
 		}
 		public void LensFunction(eLensFunction function) 
 		{

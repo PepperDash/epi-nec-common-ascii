@@ -147,6 +147,62 @@ public class CommandQueueTests
     }
 
     [Fact]
+    public void Gap_Starts_After_The_Write_Returns()
+    {
+        // A slow write must still be followed by the full gap, so the timer starts once the write is done.
+        var events = new List<string>();
+        var timers = new List<FakeTimer>();
+        var queue = new NecCommandQueue(
+            300,
+            text => events.Add($"send {text}"),
+            (ms, elapsed) => { events.Add("gap"); var t = new FakeTimer(ms, elapsed); timers.Add(t); return t; },
+            (text, ex) => { });
+
+        queue.Enqueue("power");
+        queue.Enqueue("shutter");
+        timers[0].Fire();
+
+        events.Should().Equal("send power", "gap", "send shutter", "gap");
+    }
+
+    [Fact]
+    public void Command_Enqueued_During_A_Write_Waits_For_The_Gap()
+    {
+        NecCommandQueue? queue = null;
+        var sent = new List<string>();
+        var timers = new List<FakeTimer>();
+        queue = new NecCommandQueue(
+            300,
+            text => { sent.Add(text); if (text == "power on") queue!.Enqueue("power", skipIfPending: true); },
+            (ms, elapsed) => { var t = new FakeTimer(ms, elapsed); timers.Add(t); return t; },
+            (text, ex) => { });
+
+        queue.Enqueue("power on");
+
+        sent.Should().Equal("power on");
+        queue.PendingCount.Should().Be(1);
+        timers.Should().ContainSingle();
+
+        timers[0].Fire();
+        sent.Should().Equal("power on", "power");
+    }
+
+    [Fact]
+    public void Failed_First_Write_Still_Starts_The_Gap()
+    {
+        _sendOverride = text => throw new InvalidOperationException("port closed");
+        var act = () => _queue.Enqueue("power");
+        act.Should().Throw<InvalidOperationException>();
+        _sendOverride = null;
+
+        _timers.Should().ContainSingle();
+        _queue.Enqueue("shutter");
+        _sent.Should().BeEmpty("shutter waits for the gap");
+        _timers[0].Fire();
+        _sent.Should().Equal("shutter");
+    }
+
+    [Fact]
     public void Clear_Drops_Pending_Commands()
     {
         _queue.Enqueue("power");

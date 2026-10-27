@@ -19,6 +19,8 @@ namespace EpiNecCommonAscii
 		private readonly Action<string, Exception> _logError;
 		private IDisposable _gapTimer;
 		private int _generation;
+		// True while a command is being written; a command enqueued from inside the write is queued.
+		private bool _sending;
 
 		/// <param name="gapMs">Minimum time between commands</param>
 		/// <param name="send">Writes one command to the device</param>
@@ -53,7 +55,7 @@ namespace EpiNecCommonAscii
 		{
 			lock (_lock)
 			{
-				if (_gapTimer != null)
+				if (_gapTimer != null || _sending)
 				{
 					if (!skipIfPending || !IsPendingSinceLastControl(command))
 						_pending.Add(new KeyValuePair<string, bool>(command, skipIfPending));
@@ -97,7 +99,7 @@ namespace EpiNecCommonAscii
 				}
 				catch (Exception ex)
 				{
-					// The gap timer is already running, so the rest of the queue still drains.
+					// The gap timer started anyway, so the rest of the queue still drains.
 					_logError(command, ex);
 				}
 			}
@@ -117,12 +119,21 @@ namespace EpiNecCommonAscii
 			return false;
 		}
 
-		// Called under _lock. The gap timer starts before the write so a failed write still waits out the gap.
+		// Called under _lock. The gap starts when the write returns, so a slow write still gets the full gap
+		// after it, and a failed write still waits it out.
 		private void SendAndWait(string command)
 		{
-			var generation = ++_generation;
-			_gapTimer = _startTimer(_gapMs, () => GapElapsed(generation));
-			_send(command);
+			_sending = true;
+			try
+			{
+				_send(command);
+			}
+			finally
+			{
+				_sending = false;
+				var generation = ++_generation;
+				_gapTimer = _startTimer(_gapMs, () => GapElapsed(generation));
+			}
 		}
 	}
 }

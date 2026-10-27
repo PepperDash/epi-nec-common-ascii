@@ -42,13 +42,18 @@ namespace EpiNecCommonAscii
 		/// <summary>
 		/// Sends the command now if the last one went out at least GapMs ago, otherwise queues it.
 		/// </summary>
-		public void Enqueue(string command)
+		/// <param name="command">The command, without the delimiter</param>
+		/// <param name="skipIfPending">For queries: drop the command if the same one is already waiting, so a
+		/// poll that runs faster than the gap can't build a backlog that delays other commands. Not for
+		/// control commands, where a repeat (e.g. lens start, stop, start) matters.</param>
+		public void Enqueue(string command, bool skipIfPending = false)
 		{
 			lock (_lock)
 			{
 				if (_gapTimer != null)
 				{
-					_pending.Enqueue(command);
+					if (!skipIfPending || !_pending.Contains(command))
+						_pending.Enqueue(command);
 					return;
 				}
 

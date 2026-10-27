@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace EpiNecCommonAscii
 {
 	/// <summary>
-	/// Sends commands at least GapMs apart. Some NEC displays (e.g. the PA804UL) reply in 16-byte chunks about
+	/// Sends commands at least GapMs apart. Some displays (e.g. the Sharp XP-A824U-W) reply in 16-byte chunks about
 	/// 100 ms apart and join a partial command with the next one, so back-to-back commands get merged or lost.
 	/// Uses no Essentials types, so the tests can run it.
 	/// </summary>

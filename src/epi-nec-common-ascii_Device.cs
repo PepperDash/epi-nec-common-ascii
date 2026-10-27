@@ -174,7 +174,11 @@ namespace EpiNecCommonAscii
 			}
 		}
 		private int PollState = 0;
-	
+
+		// Commands go out at least this far apart; see NecCommandQueue.
+		private const int CommandGapMs = 300;
+		private readonly NecCommandQueue _commandQueue;
+
 		public NecCommonAsciiDevice(string key, string name, NecCommonAsciiDeviceConfigObject config, IBasicCommunication comms)
 			: base(key, name)
 		{
@@ -218,6 +222,11 @@ namespace EpiNecCommonAscii
 			
 
 			Comms = comms;
+			_commandQueue = new NecCommandQueue(
+				CommandGapMs,
+				text => Comms.SendText(string.Format("{0}{1}", text, CommsDelimiter)),
+				(ms, elapsed) => new CTimer(o => elapsed(), ms),
+				(text, ex) => this.LogError("Unable to send '{0}': {1}", text, ex.Message));
 
 			CommunicationMonitor = new GenericCommunicationMonitor(this, Comms, 5000, 120000, 300000, Poll);
 			CommunicationMonitor.StatusChange += CommunicationMonitor_StatusChange;
@@ -300,6 +309,10 @@ namespace EpiNecCommonAscii
 
 		private void socket_ConnectionChange(object sender, GenericSocketStatusChageEventArgs args)
 		{
+			// Commands queued before a drop are stale by the time it reconnects.
+			if (!Comms.IsConnected)
+				_commandQueue.Clear();
+
 			if (ConnectFeedback != null)
 				ConnectFeedback.FireUpdate();
 
@@ -472,7 +485,7 @@ namespace EpiNecCommonAscii
 		{
 			if (string.IsNullOrEmpty(text)) return;
 
-			Comms.SendText(string.Format("{0}{1}", text, CommsDelimiter));
+			_commandQueue.Enqueue(text);
 		}
 
 		/// <summary>

@@ -213,6 +213,7 @@ namespace EpiNecCommonAscii
 			Comms = comms;
 
 			CommunicationMonitor = new GenericCommunicationMonitor(this, Comms, 5000, 120000, 300000, Poll);
+			CommunicationMonitor.StatusChange += CommunicationMonitor_StatusChange;
 
 			var socket = Comms as ISocketStatus;
 			if (socket != null)
@@ -281,6 +282,15 @@ namespace EpiNecCommonAscii
 			return base.CustomActivate();
 		}
 
+		private void CommunicationMonitor_StatusChange(object sender, MonitorStatusChangeEventArgs args)
+		{
+			if (OnlineFeedback != null)
+				OnlineFeedback.FireUpdate();
+
+			if (MonitorStatusFeedback != null)
+				MonitorStatusFeedback.FireUpdate();
+		}
+
 		private void socket_ConnectionChange(object sender, GenericSocketStatusChageEventArgs args)
 		{
 			if (ConnectFeedback != null)
@@ -296,6 +306,21 @@ namespace EpiNecCommonAscii
 		}
 		
 		private void Handle_LineRecieved(object sender, GenericCommMethodReceiveTextArgs args)
+		{
+			// This runs on the comms receive thread: an exception escaping here stops all further
+			// replies from being processed until the connection is re-established.
+			try
+			{
+				ProcessLine(args);
+			}
+			catch (Exception ex)
+			{
+				this.LogError("Handle_LineRecieved: unable to process '{0}': {1}", args.Text, ex.Message);
+				this.LogVerbose(ex, "Handle_LineRecieved exception");
+			}
+		}
+
+		private void ProcessLine(GenericCommMethodReceiveTextArgs args)
 		{
 			// TODO [ ] Implement method 
 			//Debug.Console(2, this, "Handle_LineRecieved {0} ", args.Text);
@@ -313,36 +338,47 @@ namespace EpiNecCommonAscii
 				var parts = dataReceived.Split(' ');
 
 				var responseType = parts[0].ToLower();
-				var responseValue = parts[1].ToLower();
+				var responseValue = GetCurrentValue(parts[1].ToLower());
 				this.LogVerbose("responseType ={0} responseValue ={1}", responseType, responseValue);
 				if (responseType.Contains("power")) UpdatePower(responseValue);
 				else if (responseType.Contains("input")) UpdateInput(responseValue);
 				else if (responseType.Contains("status")) UpdateStatus(responseValue);
 				else if (responseType.Contains("shutter"))
 				{
-					if (responseValue.Contains("open"))
+					switch (responseValue)
 					{
-						VideoMuteState = false;
-					}
-					else if (responseValue.Contains("close"))
-					{
-						VideoMuteState = true;
+						case "open":
+							VideoMuteState = false;
+							break;
+						case "close":
+							VideoMuteState = true;
+							break;
 					}
 				}
 				else if (responseType.Contains("freeze"))
 				{
-					if (responseValue.Contains("off"))
+					switch (responseValue)
 					{
-						FreezeImageState = false;
-					}
-					else if (responseValue.Contains("on"))
-					{
-						FreezeImageState = true;
+						case "off":
+							FreezeImageState = false;
+							break;
+						case "on":
+							FreezeImageState = true;
+							break;
 					}
 				}
 				else if (responseType.Contains("usage"))
 				{
-					LampHours = Int16.Parse(parts[3].Trim());
+					// e.g. "usage light hours 40000"
+					int hours;
+					if (parts.Length > 3 && int.TryParse(parts[3].Trim(), out hours))
+					{
+						LampHours = hours;
+					}
+					else
+					{
+						this.LogWarning("Unable to parse lamp hours from '{0}'", dataReceived);
+					}
 				}
 			}
 		}
@@ -377,55 +413,46 @@ namespace EpiNecCommonAscii
             UpdatePower(statusMsg[0].ToLower());
         }
 
+		// Replies to "<command> ?" look like "cur=off,sel=on|off"; the current value follows "cur=".
+		private static string GetCurrentValue(string value)
+		{
+			value = value.Trim();
+			return value.StartsWith("cur=") ? value.Substring(4).Split(',')[0] : value;
+		}
+
 	    private void UpdatePower(string response)
 	    {
-            if (response.Contains("on"))
-            {
-                PowerIsOn = true;
-                return;
-            }
-            if (response.Contains("off"))
-            {
-				PowerIsOn = false;
-                return;
-            }
-            if (response.Contains("warming"))
-            {
-                IsCooling = false;
-                IsWarming = true;
-                return;
-            }
-			if (response.Contains("busy"))
-            {
-                IsCooling = false;
-                IsWarming = true;
-                return;
-            }
-            if (response.Contains("cooling"))
-            {
-                IsWarming = false;
-                IsCooling = true;
-                return;
-            }
-
-	        if (response.Contains("running"))
-	        {
-                IsWarming = false;
-                IsCooling = false;
-                return;
-	        }
-
-	        if (response.Contains("standby"))
-	        {
-                IsWarming = false;
-                IsCooling = false;
-                PowerIsOn = false;
-                return;
-	        }
-
-            IsWarming = false;
-            PowerIsOn = false;
-            IsCooling = false;
+			// Match the whole value: help replies such as "[on|off|?]" must not change the power state.
+			switch (response.Trim())
+			{
+				case "on":
+					PowerIsOn = true;
+					break;
+				case "off":
+					PowerIsOn = false;
+					break;
+				case "warming":
+				case "busy":
+					IsCooling = false;
+					IsWarming = true;
+					break;
+				case "cooling":
+					IsWarming = false;
+					IsCooling = true;
+					break;
+				case "running":
+					IsWarming = false;
+					IsCooling = false;
+					break;
+				case "standby":
+					IsWarming = false;
+					IsCooling = false;
+					PowerIsOn = false;
+					break;
+				default:
+					this.LogVerbose("UpdatePower: ignoring '{0}'", response);
+					break;
+			}
 	    }
 
 	    private void UpdateInput(string response)
@@ -486,16 +513,18 @@ namespace EpiNecCommonAscii
 
         private int GetInputNumberFromName(string name)
         {
-            switch(name)
+            // Replies arrive lower-cased, but InputSelect passes routing names such as hdmiIn1,
+            // so compare without case.
+            switch((name ?? string.Empty).ToLowerInvariant())
             {
                 case "hdmi1":
-                case "hdmiIn1":
+                case "hdmiin1":
                     return(1);
                 case "hdmi2":
-                case "hdmiIn2":
+                case "hdmiin2":
                     return(3);
                 case "computer":
-                case "rgbIn1":
+                case "rgbin1":
                     return(2);
                 default:
                     return (0);

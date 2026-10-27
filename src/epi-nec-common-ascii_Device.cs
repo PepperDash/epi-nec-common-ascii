@@ -85,8 +85,8 @@ namespace EpiNecCommonAscii
 		private readonly object _switchLock = new object();
 		// The last selected input, confirmed against the display's input replies until _inputToConfirmUntil: a reply
 		// showing another input resends the switch (the display may have answered it "error:busy"), and input is
-		// queried again each second that brings no reply. Ends after two replies showing the selected input, since
-		// at most one can answer a query sent before the selection. Guarded by _inputLock.
+		// queried again each second that brings no reply. Stays open for the whole window, since replies to queries
+		// sent before the selection can still arrive. Guarded by _inputLock.
 		private string _inputToConfirm;
 		private DateTime _inputToConfirmUntil;
 		private bool _inputReplySinceConfirmQuery;
@@ -510,9 +510,9 @@ namespace EpiNecCommonAscii
 					}
 					else if (GetInputNumberFromName(_inputToConfirm) == reported)
 					{
-						// The first match may answer a query sent before the selection; the second confirms it.
-						if (++_inputConfirmMatches >= 2)
-							EndInputConfirmation();
+						// Matches don't end the confirmation early: replies to queries sent before the selection can
+						// still arrive, so it stays open for the whole window.
+						_inputConfirmMatches++;
 					}
 					else if (DateTime.UtcNow < _inputLastSentUntil)
 					{

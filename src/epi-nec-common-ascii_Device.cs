@@ -80,6 +80,8 @@ namespace EpiNecCommonAscii
 		private readonly NecAsciiInputs _inputs;
 		private CTimer _powerPollTimer;
 		private CTimer _powerPollTimeoutTimer;
+		// Input switch requested while power was off; runs when power on is reported.
+		private Action _pendingSwitch;
 
         private bool _isWarming;
         public bool IsWarming
@@ -269,6 +271,11 @@ namespace EpiNecCommonAscii
             IsCooling = false;
 
             StopPowerPollTimer();
+
+            if (PowerIsOn)
+                RunPendingSwitch();
+            else
+                CancelPendingSwitch("power went off");
         }
         private void IsWarmingUpFeedback_OutputChange(object sender, FeedbackEventArgs e)
         {
@@ -642,33 +649,35 @@ namespace EpiNecCommonAscii
 			}
 			else
 			{
-				this.LogVerbose("ExecuteSwitch - Power is off, queuing input switch and powering on");
-				EventHandler<FeedbackEventArgs> handler = null;
 				var inputSelector = selector as Action;
-				handler = (o, a) =>
+				if (inputSelector == null)
 				{
-					if (IsWarming)
-					{
-						this.LogVerbose("ExecuteSwitch - Still warming up, waiting...");
-						return;
-					}
+					this.LogWarning("ExecuteSwitch - Unable to switch using selector {0}", selector);
+					return;
+				}
 
-					IsWarmingUpFeedback.OutputChange -= handler;
-					this.LogVerbose("ExecuteSwitch - Warm-up complete, invoking queued input switch");
-
-					if (inputSelector == null)
-					{
-						this.LogWarning("ExecuteSwitch - inputSelector is null, cannot switch");
-						return;
-					}
-
-					inputSelector();
-				};
-
-				IsWarmingUpFeedback.OutputChange += handler;
+				// Runs when power on is reported. Replaces any earlier switch still waiting, so only the latest
+				// selection is made.
+				this.LogVerbose("ExecuteSwitch - Power is off, queuing input switch and powering on");
+				System.Threading.Interlocked.Exchange(ref _pendingSwitch, inputSelector);
 				PowerOn();
 			}
 	    }
+
+		private void RunPendingSwitch()
+		{
+			var pending = System.Threading.Interlocked.Exchange(ref _pendingSwitch, null);
+			if (pending == null) return;
+
+			this.LogVerbose("ExecuteSwitch - Power on reported, invoking queued input switch");
+			pending();
+		}
+
+		private void CancelPendingSwitch(string reason)
+		{
+			if (System.Threading.Interlocked.Exchange(ref _pendingSwitch, null) != null)
+				this.LogWarning("ExecuteSwitch - Dropping queued input switch: {0}", reason);
+		}
 
 		public void InputPoll()
 		{
@@ -731,9 +740,11 @@ namespace EpiNecCommonAscii
 				StopPowerPollTimer();
 
 				// Without this, warming or cooling would stay set until the next comm monitor poll sees a
-				// change in power, and an input switch queued in ExecuteSwitch would keep waiting.
+				// change in power. An input switch queued in ExecuteSwitch is dropped: power on wasn't reported,
+				// and running it later, whenever power next comes on, would be a surprise.
 				IsWarming = false;
 				IsCooling = false;
+				CancelPendingSwitch("power on not reported before the timeout");
 				PowerPoll();
 			}, null, timeoutMs, Timeout.Infinite);
 		}

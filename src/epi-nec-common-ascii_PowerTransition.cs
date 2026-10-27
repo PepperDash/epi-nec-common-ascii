@@ -7,7 +7,7 @@ namespace EpiNecCommonAscii
 	/// can run it.
 	/// </summary>
 	/// <remarks>
-	/// A PA804UL takes about 26 s to power on: about 3 s of "power off", about 15 s of "error:busy", about 5 s
+	/// A XP-A824U-W takes about 26 s to power on: about 3 s of "power off", about 15 s of "error:busy", about 5 s
 	/// of "power warming", then "power on". Its replies arrive in 16-byte chunks about 100 ms apart.
 	/// </remarks>
 	public static class NecPowerTransition

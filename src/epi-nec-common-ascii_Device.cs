@@ -84,10 +84,14 @@ namespace EpiNecCommonAscii
 		private Action _pendingSwitch;
 		private readonly object _switchLock = new object();
 		// An input selected while it already showed as selected. Until _inputToConfirmUntil, an input reply showing
-		// another input switches to it. Guarded by _inputLock.
+		// another input switches to it, and input is queried again each second that brings no reply (for example
+		// while the display answers "error:busy"). Guarded by _inputLock.
 		private string _inputToConfirm;
 		private DateTime _inputToConfirmUntil;
-		private const int InputConfirmWindowMs = 5000;
+		private bool _inputReplySinceConfirmQuery;
+		private CTimer _inputConfirmTimer;
+		private const int InputConfirmWindowMs = 10000;
+		private const int InputConfirmRetryMs = 1000;
 		private readonly object _inputLock = new object();
 
         private bool _isWarming;
@@ -496,9 +500,11 @@ namespace EpiNecCommonAscii
 				if (_inputToConfirm == null)
 					return;
 
+				_inputReplySinceConfirmQuery = true;
+
 				if (DateTime.UtcNow > _inputToConfirmUntil)
 				{
-					_inputToConfirm = null;
+					EndInputConfirmation();
 					return;
 				}
 
@@ -507,12 +513,44 @@ namespace EpiNecCommonAscii
 				if (GetInputNumberFromName(_inputToConfirm) != InputNumber)
 				{
 					var toConfirm = _inputToConfirm;
-					_inputToConfirm = null;
+					EndInputConfirmation();
 					this.LogInformation("InputSelect - display reports '{0}', not the selected '{1}'; switching", response, toConfirm);
 					InputSelect(new NecAsciiCommand(toConfirm));
 				}
 			}
 	    }
+
+		// Runs every InputConfirmRetryMs while a confirmation is open.
+		private void InputConfirmTick()
+		{
+			lock (_inputLock)
+			{
+				if (_inputToConfirm == null)
+					return;
+
+				if (DateTime.UtcNow > _inputToConfirmUntil)
+				{
+					if (!_inputReplySinceConfirmQuery)
+						this.LogWarning("InputSelect - no input reply within {0} ms to confirm '{1}'; the display may still be on another input", InputConfirmWindowMs, _inputToConfirm);
+					EndInputConfirmation();
+					return;
+				}
+
+				// Query again only if the last second brought no input reply (e.g. it was answered "error:busy").
+				if (!_inputReplySinceConfirmQuery)
+					InputPoll();
+				_inputReplySinceConfirmQuery = false;
+			}
+		}
+
+		// Called under _inputLock.
+		private void EndInputConfirmation()
+		{
+			_inputToConfirm = null;
+			_inputConfirmTimer?.Stop();
+			_inputConfirmTimer?.Dispose();
+			_inputConfirmTimer = null;
+		}
 	
 		public void SendText(string text)
 		{
@@ -657,14 +695,17 @@ namespace EpiNecCommonAscii
 	            if (InputNumber == GetInputNumberFromName(commandString))
 	            {
 	                this.LogInformation("InputSelect - input '{0}' already shows as selected (InputNumber: {1}); querying input to confirm", commandString, InputNumber);
+	                EndInputConfirmation();
 	                _inputToConfirm = commandString;
 	                _inputToConfirmUntil = DateTime.UtcNow.AddMilliseconds(InputConfirmWindowMs);
+	                _inputReplySinceConfirmQuery = false;
+	                _inputConfirmTimer = new CTimer(o => InputConfirmTick(), null, InputConfirmRetryMs, InputConfirmRetryMs);
 	                InputPoll();
 	                return;
 	            }
 
 	            // A newer selection replaces one waiting to be confirmed.
-	            _inputToConfirm = null;
+	            EndInputConfirmation();
 
 	            this.LogVerbose("InputSelect - Sending 'input {0}' to device", InputList[commandString]);
 	            SendText(string.Format("input {0}",InputList[commandString]));

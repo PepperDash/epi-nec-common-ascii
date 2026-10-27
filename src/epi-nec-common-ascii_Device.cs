@@ -660,6 +660,15 @@ namespace EpiNecCommonAscii
 				// selection is made.
 				this.LogVerbose("ExecuteSwitch - Power is off, queuing input switch and powering on");
 				System.Threading.Interlocked.Exchange(ref _pendingSwitch, inputSelector);
+
+				// Power on may have been reported between the check above and storing the switch, in which case
+				// the feedback handler found nothing to run.
+				if (PowerIsOn)
+				{
+					RunPendingSwitch();
+					return;
+				}
+
 				PowerOn();
 			}
 	    }

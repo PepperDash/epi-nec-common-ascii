@@ -518,22 +518,7 @@ namespace EpiNecCommonAscii
 
         private int GetInputNumberFromName(string name)
         {
-            // Replies arrive lower-cased, but InputSelect passes routing names such as hdmiIn1,
-            // so compare without case.
-            switch((name ?? string.Empty).ToLowerInvariant())
-            {
-                case "hdmi1":
-                case "hdmiin1":
-                    return(1);
-                case "hdmi2":
-                case "hdmiin2":
-                    return(3);
-                case "computer":
-                case "rgbin1":
-                    return(2);
-                default:
-                    return (0);
-            }
+            return NecInputMap.GetInputNumber(name);
         }
 
 		private string GetInputNameFromNumber(int inputNumber)
@@ -570,31 +555,16 @@ namespace EpiNecCommonAscii
 		/// </summary>
 		private List<KeyValuePair<string, string>> GetExposedInputs(List<NecInputConfig> configured)
 		{
-			if (configured == null || configured.Count == 0)
-				return NecAsciiInputs.AllInputs.ToList();
+			var unknownKeys = new List<string>();
+			var exposed = NecInputMap.GetExposedInputs(configured, unknownKeys);
 
-			var labels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-			foreach (var input in configured.Where(i => i != null))
-			{
-				if (!NecAsciiInputs.AllInputs.Any(i => string.Equals(i.Key, input.Key, StringComparison.OrdinalIgnoreCase)))
-				{
-					this.LogWarning("Ignoring unknown input '{0}' in config. Known inputs: {1}", input.Key, string.Join(", ", NecAsciiInputs.AllInputs.Select(i => i.Key)));
-					continue;
-				}
+			foreach (var key in unknownKeys)
+				this.LogWarning("Ignoring unknown input '{0}' in config. Known inputs: {1}", key, string.Join(", ", NecInputMap.AllInputs.Select(i => i.Key)));
 
-				labels[input.Key] = input.Name;
-			}
-
-			if (labels.Count == 0)
-			{
+			if (unknownKeys.Count > 0 && unknownKeys.Count == configured.Count(i => i != null))
 				this.LogWarning("No known inputs in config; exposing all inputs");
-				return NecAsciiInputs.AllInputs.ToList();
-			}
 
-			return NecAsciiInputs.AllInputs
-				.Where(i => labels.ContainsKey(i.Key))
-				.Select(i => new KeyValuePair<string, string>(i.Key, string.IsNullOrEmpty(labels[i.Key]) ? i.Value : labels[i.Key]))
-				.ToList();
+			return exposed;
 		}
 
 	    private void InitializeRoutingInputPorts(List<KeyValuePair<string, string>> exposedInputs)
@@ -623,18 +593,7 @@ namespace EpiNecCommonAscii
 		/// </summary>
 		private int GetSelectedPortNumber()
 		{
-			if (InputNumber == 0)
-				return 0;
-
-			var position = 0;
-			foreach (var port in InputPorts)
-			{
-				position++;
-				if (GetInputNumberFromName(port.Key) == InputNumber)
-					return position;
-			}
-
-			return 0;
+			return NecInputMap.GetPortNumber(InputPorts.Select(p => p.Key), InputNumber);
 		}
 
 
@@ -1021,19 +980,6 @@ namespace EpiNecCommonAscii
 		public const string HdmiIn1 = "hdmiIn1";
 		public const string HdmiIn2 = "hdmiIn2";
 		public const string RgbIn1 = "rgbIn1";
-		private const string HdmiIn1Label = "HDMI 1";
-		private const string HdmiIn2Label = "HDMI 2";
-		private const string RgbIn1Label = "RGB";
-
-		/// <summary>
-		/// Every input the plugin supports, in port order, with its default label
-		/// </summary>
-		public static readonly IReadOnlyList<KeyValuePair<string, string>> AllInputs = new List<KeyValuePair<string, string>>
-		{
-			new KeyValuePair<string, string>(HdmiIn1, HdmiIn1Label),
-			new KeyValuePair<string, string>(HdmiIn2, HdmiIn2Label),
-			new KeyValuePair<string, string>(RgbIn1, RgbIn1Label)
-		};
 
 		private Dictionary<string, ISelectableItem> _items;
 		private string _currentItem;

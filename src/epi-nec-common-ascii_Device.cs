@@ -483,31 +483,13 @@ namespace EpiNecCommonAscii
 		/// </remarks>
 		public void Poll()
 		{
-			switch (PollState)
-			{
-				case 0: 
-					PowerPoll();
-					VideoMutePoll();
-					break;
-				case 1:
-					PowerPoll();
-					VideoMutePoll();
-					InputPoll();
-					break;
-				case 2:
-					PowerPoll();
-					VideoMutePoll();
-					break;
-				case 3:
-					PowerPoll();
-					VideoMutePoll();
-					LightUsagePoll();
-					PollState = 0;
-					break;
-				default:
-					PollState = 0;
-					return;
-			}PollState++; 
+			if (PollState < 0 || PollState >= NecPollPlan.StateCount)
+				PollState = 0;
+
+			foreach (var command in NecPollPlan.GetCommands(PollState, PowerIsOn, _config.PollShutter))
+				SendText(command);
+
+			PollState = (PollState + 1) % NecPollPlan.StateCount;
 		}
 
 	    private void AddRoutingInputPort(RoutingInputPort port, string fbMatch)

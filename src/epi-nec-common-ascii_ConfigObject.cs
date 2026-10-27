@@ -217,6 +217,23 @@ namespace EpiNecCommonAscii
 		[JsonProperty("inputs")]
 		public List<NecInputConfig> Inputs { get; set; }
 
+		/// <summary>
+		/// Whether the poll queries the shutter (video mute) state
+		/// </summary>
+		/// <remarks>
+		/// Defaults to true. Set false for displays with no shutter, which answer the query with
+		/// "error:command". The shutter is never polled while power is off.
+		/// </remarks>
+		/// <example>
+		/// <code>
+		/// "properties": {
+		///		"pollShutter": false
+		/// }
+		/// </code>
+		/// </example>
+		[JsonProperty("pollShutter")]
+		public bool PollShutter { get; set; } = true;
+
 
 		/// <summary>
 		/// Example dictionary of objects

@@ -80,8 +80,6 @@ namespace EpiNecCommonAscii
 		private readonly NecAsciiInputs _inputs;
 		private CTimer _powerPollTimer;
 		private CTimer _powerPollTimeoutTimer;
-		private const int PowerPollIntervalMs = 200;
-		private const int PowerPollTimeoutMs = 30000;
 
         private bool _isWarming;
         public bool IsWarming
@@ -713,16 +711,23 @@ namespace EpiNecCommonAscii
 
         #region Commands
 
-		private void StartPowerPollTimer()
+		private void StartPowerPollTimer(uint configuredTimeMs)
 		{
 			StopPowerPollTimer();
-			_powerPollTimer = new CTimer((o) => PowerPoll(), null, 1000, PowerPollIntervalMs);
+			var timeoutMs = NecPowerTransition.GetTimeoutMs(configuredTimeMs);
+			_powerPollTimer = new CTimer((o) => PowerPoll(), null, NecPowerTransition.PollIntervalMs, NecPowerTransition.PollIntervalMs);
 			_powerPollTimeoutTimer = new CTimer((o) =>
 			{
-				this.LogWarning("PowerPoll timed out after {0}ms with no feedback response", PowerPollTimeoutMs);
+				this.LogWarning("PowerPoll timed out after {0}ms with no power feedback; clearing warming/cooling", timeoutMs);
 				_powerPollTimeoutTimer = null;
 				StopPowerPollTimer();
-			}, null, PowerPollTimeoutMs, Timeout.Infinite);
+
+				// Without this, warming or cooling would stay set until the next comm monitor poll sees a
+				// change in power, and an input switch queued in ExecuteSwitch would keep waiting.
+				IsWarming = false;
+				IsCooling = false;
+				PowerPoll();
+			}, null, timeoutMs, Timeout.Infinite);
 		}
 
 		private void StopPowerPollTimer()
@@ -749,7 +754,7 @@ namespace EpiNecCommonAscii
             this.LogVerbose("PowerOn - Sending 'power on' to device");
 	        SendText("power on");
 
-			StartPowerPollTimer();
+			StartPowerPollTimer(_warmingTimeMs);
 			//PowerPoll();
         }
 
@@ -763,7 +768,7 @@ namespace EpiNecCommonAscii
 
             SendText("power off");
 
-			StartPowerPollTimer();
+			StartPowerPollTimer(_coolingTimeMs);
 			//PowerPoll();
 	    }
 

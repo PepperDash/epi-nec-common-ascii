@@ -180,9 +180,17 @@ namespace EpiNecCommonAscii
 		{
 			this.LogInformation("Constructing new {0} instance", name);
 
-			_inputs = new NecAsciiInputs();
+			_config = config;
+			var exposedInputs = GetExposedInputs(config.Inputs);
+
+			_inputs = new NecAsciiInputs(exposedInputs);
 			//When the CurrentItemChanged event is invoked, it calls the InputSelect method with the CurrentItem string
-			_inputs.CurrentItemChanged += (sender, args) => InputSelect(new NecAsciiCommand(_inputs.CurrentItem));
+			_inputs.CurrentItemChanged += (sender, args) =>
+			{
+				// CurrentItem is null when feedback cleared the selection; there is nothing to select.
+				if (!string.IsNullOrEmpty(_inputs.CurrentItem))
+					InputSelect(new NecAsciiCommand(_inputs.CurrentItem));
+			};
 
 			// TODO [ ] Update the constructor as needed for the plugin device being developed
 
@@ -195,8 +203,7 @@ namespace EpiNecCommonAscii
                {RoutingPortNames.RgbIn1,   "computer"}      
 
 		    };
-			InitializeRoutingInputPorts();
-			_config = config;
+			InitializeRoutingInputPorts(exposedInputs);
 
 			ConnectFeedback = new BoolFeedback(() => Comms.IsConnected);
 			OnlineFeedback = new BoolFeedback(() => CommunicationMonitor.IsOnline);
@@ -511,22 +518,7 @@ namespace EpiNecCommonAscii
 
         private int GetInputNumberFromName(string name)
         {
-            // Replies arrive lower-cased, but InputSelect passes routing names such as hdmiIn1,
-            // so compare without case.
-            switch((name ?? string.Empty).ToLowerInvariant())
-            {
-                case "hdmi1":
-                case "hdmiin1":
-                    return(1);
-                case "hdmi2":
-                case "hdmiin2":
-                    return(3);
-                case "computer":
-                case "rgbin1":
-                    return(2);
-                default:
-                    return (0);
-            }
+            return NecInputMap.GetInputNumber(name);
         }
 
 		private string GetInputNameFromNumber(int inputNumber)
@@ -546,34 +538,63 @@ namespace EpiNecCommonAscii
 
 		private void SyncSelectableInputs()
 		{
+			// An input that isn't exposed (e.g. RGB picked on the remote) or isn't recognised leaves no item selected.
 			var selectedInput = GetInputNameFromNumber(InputNumber);
-			if (string.IsNullOrEmpty(selectedInput))
+			if (string.IsNullOrEmpty(selectedInput) || !_inputs.Items.ContainsKey(selectedInput))
 			{
+				_inputs.ClearCurrentItemFromFeedback();
 				return;
 			}
 
 			_inputs.SetCurrentItemFromFeedback(selectedInput);
 		}
 
-	    private void InitializeRoutingInputPorts()
+		/// <summary>
+		/// The inputs to expose, in the fixed order hdmiIn1, hdmiIn2, rgbIn1, with their labels. All of them when
+		/// the config lists none.
+		/// </summary>
+		private List<KeyValuePair<string, string>> GetExposedInputs(List<NecInputConfig> configured)
+		{
+			var unknownKeys = new List<string>();
+			var exposed = NecInputMap.GetExposedInputs(configured, unknownKeys);
+
+			foreach (var key in unknownKeys)
+				this.LogWarning("Ignoring unknown input '{0}' in config. Known inputs: {1}", key, string.Join(", ", NecInputMap.AllInputs.Select(i => i.Key)));
+
+			if (unknownKeys.Count > 0 && unknownKeys.Count == configured.Count(i => i != null))
+				this.LogWarning("No known inputs in config; exposing all inputs");
+
+			return exposed;
+		}
+
+	    private void InitializeRoutingInputPorts(List<KeyValuePair<string, string>> exposedInputs)
 	    {
 			InputFeedback = new List<BoolFeedback>();
-	        AddRoutingInputPort(new RoutingInputPort(RoutingPortNames.HdmiIn1, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi, new Action(() => InputSelect(new NecAsciiCommand(RoutingPortNames.HdmiIn1))),this), InputList[RoutingPortNames.HdmiIn1]);
-	        AddRoutingInputPort(new RoutingInputPort(RoutingPortNames.HdmiIn2, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Hdmi, new Action(() => InputSelect(new NecAsciiCommand(RoutingPortNames.HdmiIn2))), this), InputList[RoutingPortNames.HdmiIn2]);
-	        AddRoutingInputPort(new RoutingInputPort(RoutingPortNames.RgbIn1, eRoutingSignalType.AudioVideo, eRoutingPortConnectionType.Rgb, new Action(() => InputSelect(new NecAsciiCommand(RoutingPortNames.RgbIn1))), this), InputList[RoutingPortNames.RgbIn1]);
-			for (var i = 0; i < InputPorts.Count; i++)
+			foreach (var input in exposedInputs)
 			{
-				var j = i;
+				// Input keys match the routing port names (hdmiIn1, hdmiIn2, rgbIn1).
+				var portKey = input.Key;
+				var connectionType = portKey == RoutingPortNames.RgbIn1 ? eRoutingPortConnectionType.Rgb : eRoutingPortConnectionType.Hdmi;
+				AddRoutingInputPort(new RoutingInputPort(portKey, eRoutingSignalType.AudioVideo, connectionType, new Action(() => InputSelect(new NecAsciiCommand(portKey))), this), InputList[portKey]);
 
-				InputFeedback.Add(new BoolFeedback(() => InputNumber == j + 1));
+				// Bridge joins select inputs by port position, so each feedback follows its port rather than
+				// the projector's input number (hdmi1 = 1, computer = 2, hdmi2 = 3).
+				InputFeedback.Add(new BoolFeedback(() => InputNumber != 0 && InputNumber == GetInputNumberFromName(portKey)));
 			}
-			InputNumberFeedback = new IntFeedback(() =>
-			{
-				return InputNumber;
-			});
+
+			InputNumberFeedback = new IntFeedback(GetSelectedPortNumber);
 
 			SyncSelectableInputs();
 	    }
+
+		/// <summary>
+		/// 1-based position of the selected input among the exposed ports, matching the bridge's analog
+		/// InputSelect join. 0 when the selected input isn't exposed.
+		/// </summary>
+		private int GetSelectedPortNumber()
+		{
+			return NecInputMap.GetPortNumber(InputPorts.Select(p => p.Key), InputNumber);
+		}
 
 
 	    public void InputSelect(NecAsciiCommand command)
@@ -959,22 +980,18 @@ namespace EpiNecCommonAscii
 		public const string HdmiIn1 = "hdmiIn1";
 		public const string HdmiIn2 = "hdmiIn2";
 		public const string RgbIn1 = "rgbIn1";
-		private const string HdmiIn1Label = "HDMI 1";
-		private const string HdmiIn2Label = "HDMI 2";
-		private const string RgbIn1Label = "RGB";
 
 		private Dictionary<string, ISelectableItem> _items;
 		private string _currentItem;
 		private bool _isApplyingFeedback;
 
-		public NecAsciiInputs()
+		public NecAsciiInputs(IEnumerable<KeyValuePair<string, string>> inputs)
 		{
-			_items = new Dictionary<string, ISelectableItem>(StringComparer.OrdinalIgnoreCase)
+			_items = new Dictionary<string, ISelectableItem>(StringComparer.OrdinalIgnoreCase);
+			foreach (var input in inputs)
 			{
-				{ HdmiIn1, new NecAsciiSelectableItem(HdmiIn1, HdmiIn1Label) },
-				{ HdmiIn2, new NecAsciiSelectableItem(HdmiIn2, HdmiIn2Label) },
-				{ RgbIn1, new NecAsciiSelectableItem(RgbIn1, RgbIn1Label) }
-			};
+				_items[input.Key] = new NecAsciiSelectableItem(input.Key, input.Value);
+			}
 
 			 foreach (var item in _items) //This creates delegates for each item that fire when item.Value.ItemUpdated is invoked
 				{
@@ -1039,6 +1056,34 @@ namespace EpiNecCommonAscii
 				CurrentItemChanged?.Invoke(this, EventArgs.Empty);
 			}
 
+			ItemsUpdated?.Invoke(this, EventArgs.Empty);
+		}
+
+		/// <summary>
+		/// Deselects every item, for when the device reports an input that isn't in the list
+		/// </summary>
+		public void ClearCurrentItemFromFeedback()
+		{
+			if (_currentItem == null && !_items.Values.Any(i => i.IsSelected))
+			{
+				return;
+			}
+
+			_isApplyingFeedback = true;
+			try
+			{
+				foreach (var item in _items)
+				{
+					item.Value.IsSelected = false;
+				}
+			}
+			finally
+			{
+				_isApplyingFeedback = false;
+			}
+
+			_currentItem = null;
+			CurrentItemChanged?.Invoke(this, EventArgs.Empty);
 			ItemsUpdated?.Invoke(this, EventArgs.Empty);
 		}
 

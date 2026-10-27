@@ -199,6 +199,23 @@ Update the configuration object as needed for the plugin being developed.
 }
 ```
 
+#### Inputs
+
+By default the plugin exposes HDMI 1 (`hdmiIn1`), HDMI 2 (`hdmiIn2`) and RGB (`rgbIn1`) as routing ports and selectable inputs. To expose fewer, list them in `inputs`. Each entry is a key, or an object with a `key` and a display `name`:
+
+```json
+"properties": {
+	"inputs": ["hdmiIn1", { "key": "hdmiIn2", "name": "Laptop" }]
+}
+```
+
+- When `inputs` is missing or empty, all three inputs are exposed.
+- Inputs keep the order HDMI 1, HDMI 2, RGB, whatever order the config lists them in.
+- Unknown keys are logged as a warning and ignored.
+- If the projector switches to an input that isn't exposed (for example from its remote), no input shows as selected.
+
+The bridge's input select joins (digital `InputSelectOffset` and analog `InputSelect`) follow the exposed inputs in that order. Join 1 is the first exposed input, and the feedback on each join matches the input that join selects.
+
 ### Plugin Bridge Configuration Object
 
 Update the bridge configuration object as needed for the plugin being developed.

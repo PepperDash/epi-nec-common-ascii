@@ -29,6 +29,7 @@ public class ConfigDeserializationTests
     [InlineData("ErrorTimeoutMs", "errorTimeoutMs")]
     [InlineData("WarmingTimeMs", "warmingTimeMs")]
     [InlineData("CoolingTimeMs", "coolingTimeMs")]
+    [InlineData("Inputs", "inputs")]
     public void Config_Property_Has_JsonPropertyAttribute(string propertyName, string jsonName)
     {
         var type = GetConfigType("NecCommonAsciiDeviceConfigObject");

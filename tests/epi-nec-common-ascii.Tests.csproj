@@ -17,11 +17,12 @@
     </PackageReference>
     <PackageReference Include="FluentAssertions" Version="7.0.0" />
     <PackageReference Include="System.Reflection.MetadataLoadContext" Version="9.0.4" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Ensures the plugin is built before tests run (no direct assembly reference) -->
-    <ProjectReference Include="..\src\epi-nec-common-ascii.4Series.csproj" ReferenceOutputAssembly="false" />
+    <!-- Builds the plugin first. The direct reference lets tests run code that uses no Essentials types
+         (NecInputMap, NecInputConfigConverter); Essentials itself is not available here. -->
+    <ProjectReference Include="..\src\epi-nec-common-ascii.4Series.csproj" ReferenceOutputAssembly="true" />
   </ItemGroup>
 </Project>

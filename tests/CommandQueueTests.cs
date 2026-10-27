@@ -94,14 +94,31 @@ public class CommandQueueTests
         // A power poll running faster than the gap, with an input switch in between.
         _queue.Enqueue("power", skipIfPending: true);   // sent
         _queue.Enqueue("power", skipIfPending: true);   // queued
-        _queue.Enqueue("input hdmi2");
         _queue.Enqueue("power", skipIfPending: true);   // dropped: already waiting
+        _queue.Enqueue("input hdmi2");
+        _queue.Enqueue("power", skipIfPending: true);   // queued: the waiting one is before the input switch
+        _queue.Enqueue("power", skipIfPending: true);   // dropped
         _queue.Enqueue("power", skipIfPending: true);   // dropped
 
-        _queue.PendingCount.Should().Be(2);
+        _queue.PendingCount.Should().Be(3);
         _timers[0].Fire();
         _timers[1].Fire();
-        _sent.Should().Equal("power", "power", "input hdmi2");
+        _timers[2].Fire();
+        _sent.Should().Equal("power", "power", "input hdmi2", "power");
+    }
+
+    [Fact]
+    public void Query_After_A_Control_Command_Is_Kept()
+    {
+        // A poll's freeze query is waiting when freeze on/off go out with their follow-up queries.
+        _queue.Enqueue("power", skipIfPending: true);   // sent
+        _queue.Enqueue("freeze", skipIfPending: true);
+        _queue.Enqueue("freeze on");
+        _queue.Enqueue("freeze off");
+        _queue.Enqueue("freeze", skipIfPending: true);  // kept: reads the state after freeze off
+
+        for (var i = 0; i < 4; i++) _timers[i].Fire();
+        _sent.Should().Equal("power", "freeze", "freeze on", "freeze off", "freeze");
     }
 
     [Fact]

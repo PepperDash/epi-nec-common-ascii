@@ -11,7 +11,8 @@ namespace EpiNecCommonAscii
 	public class NecCommandQueue
 	{
 		private readonly object _lock = new object();
-		private readonly Queue<string> _pending = new Queue<string>();
+		// Queued commands, oldest first. IsQuery marks commands queued with skipIfPending.
+		private readonly List<KeyValuePair<string, bool>> _pending = new List<KeyValuePair<string, bool>>();
 		private readonly long _gapMs;
 		private readonly Action<string> _send;
 		private readonly Func<long, Action, IDisposable> _startTimer;
@@ -43,17 +44,19 @@ namespace EpiNecCommonAscii
 		/// Sends the command now if the last one went out at least GapMs ago, otherwise queues it.
 		/// </summary>
 		/// <param name="command">The command, without the delimiter</param>
-		/// <param name="skipIfPending">For queries: drop the command if the same one is already waiting, so a
-		/// poll that runs faster than the gap can't build a backlog that delays other commands. Not for
-		/// control commands, where a repeat (e.g. lens start, stop, start) matters.</param>
+		/// <param name="skipIfPending">For queries: drop the command if the same one is already waiting with no
+		/// control command queued after it, so a poll that runs faster than the gap can't build a backlog that
+		/// delays other commands. A query queued after a control command (e.g. freeze off, then freeze) is kept,
+		/// since the earlier one would read the state from before that control. Not for control commands,
+		/// where a repeat (e.g. lens start, stop, start) matters.</param>
 		public void Enqueue(string command, bool skipIfPending = false)
 		{
 			lock (_lock)
 			{
 				if (_gapTimer != null)
 				{
-					if (!skipIfPending || !_pending.Contains(command))
-						_pending.Enqueue(command);
+					if (!skipIfPending || !IsPendingSinceLastControl(command))
+						_pending.Add(new KeyValuePair<string, bool>(command, skipIfPending));
 					return;
 				}
 
@@ -86,7 +89,8 @@ namespace EpiNecCommonAscii
 				if (_pending.Count == 0)
 					return;
 
-				var command = _pending.Dequeue();
+				var command = _pending[0].Key;
+				_pending.RemoveAt(0);
 				try
 				{
 					SendAndWait(command);
@@ -97,6 +101,20 @@ namespace EpiNecCommonAscii
 					_logError(command, ex);
 				}
 			}
+		}
+
+		// Called under _lock. True when the query is already queued after the last queued control command.
+		private bool IsPendingSinceLastControl(string query)
+		{
+			for (var i = _pending.Count - 1; i >= 0; i--)
+			{
+				if (!_pending[i].Value)
+					return false;
+				if (_pending[i].Key == query)
+					return true;
+			}
+
+			return false;
 		}
 
 		// Called under _lock. The gap timer starts before the write so a failed write still waits out the gap.

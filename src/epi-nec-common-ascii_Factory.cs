@@ -74,8 +74,8 @@ namespace EpiNecCommonAscii
 					Debug.Console(0, "[{0}] {1} will attempt to connect using: {2}:{3}", dc.Key, dc.Name, address, port);
 
 					var username = controlConfig.TcpSshProperties.Username;
-					var password = controlConfig.TcpSshProperties.Password;
-					Debug.Console(1, "[{0}] {1} will attempt to use authorization credentials: {2}:{3}", dc.Key, dc.Name, username, password);
+					// Password intentionally omitted from the log - avoid writing credentials to logs.
+					Debug.Console(1, "[{0}] {1} will attempt to use authorization credentials for user: {2}", dc.Key, dc.Name, username);
 
 					// TODO [ ] Update with the proper constructor to instantiate the device using HTTPS
 					throw new NotImplementedException();

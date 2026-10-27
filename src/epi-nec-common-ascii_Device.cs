@@ -487,6 +487,14 @@ namespace EpiNecCommonAscii
 		}
 
 		/// <summary>
+		/// Sends a status query. It's dropped if the same query is already waiting to go out.
+		/// </summary>
+		private void SendQuery(string text)
+		{
+			_commandQueue.Enqueue(text, skipIfPending: true);
+		}
+
+		/// <summary>
 		/// Polls the device
 		/// </summary>
 		/// <remarks>
@@ -498,7 +506,7 @@ namespace EpiNecCommonAscii
 				PollState = 0;
 
 			foreach (var command in NecPollPlan.GetCommands(PollState, PowerIsOn, _config.PollShutter))
-				SendText(command);
+				SendQuery(command);
 
 			PollState = (PollState + 1) % NecPollPlan.StateCount;
 		}
@@ -664,7 +672,7 @@ namespace EpiNecCommonAscii
 
 		public void InputPoll()
 		{
-			SendText("input");
+			SendQuery("input");
 		}
 		protected override Func<bool> PowerIsOnFeedbackFunc
 		{
@@ -790,7 +798,7 @@ namespace EpiNecCommonAscii
 		/// </summary>
 		public void PowerPoll()
 		{
-			SendText("power");
+			SendQuery("power");
 		}
 
 		/// <summary>
@@ -827,11 +835,11 @@ namespace EpiNecCommonAscii
 
 		public void VideoMutePoll()
 		{
-			SendText("shutter");
+			SendQuery("shutter");
 		}
 		public void LightUsagePoll()
 		{
-			SendText("usage light hours");
+			SendQuery("usage light hours");
 		}
 		public void FreezeImageOn()
 		{
@@ -856,7 +864,7 @@ namespace EpiNecCommonAscii
 		}
 		public void FreezeImagePoll()
 		{
-			SendText("freeze");
+			SendQuery("freeze");
 		}
 		public void LensFunction(eLensFunction function) 
 		{

@@ -89,6 +89,47 @@ public class CommandQueueTests
     }
 
     [Fact]
+    public void Repeated_Query_Already_Pending_Is_Dropped()
+    {
+        // A power poll running faster than the gap, with an input switch in between.
+        _queue.Enqueue("power", skipIfPending: true);   // sent
+        _queue.Enqueue("power", skipIfPending: true);   // queued
+        _queue.Enqueue("input hdmi2");
+        _queue.Enqueue("power", skipIfPending: true);   // dropped: already waiting
+        _queue.Enqueue("power", skipIfPending: true);   // dropped
+
+        _queue.PendingCount.Should().Be(2);
+        _timers[0].Fire();
+        _timers[1].Fire();
+        _sent.Should().Equal("power", "power", "input hdmi2");
+    }
+
+    [Fact]
+    public void Query_Is_Queued_Again_Once_The_Pending_One_Has_Gone_Out()
+    {
+        _queue.Enqueue("input hdmi1");
+        _queue.Enqueue("power", skipIfPending: true);
+        _timers[0].Fire();                               // power goes out
+        _queue.Enqueue("shutter close");
+        _queue.Enqueue("power", skipIfPending: true);   // not pending any more, so queued
+
+        _timers[1].Fire();
+        _timers[2].Fire();
+        _sent.Should().Equal("input hdmi1", "power", "shutter close", "power");
+    }
+
+    [Fact]
+    public void Repeated_Control_Commands_Are_All_Sent()
+    {
+        _queue.Enqueue("lens zoom start +");
+        _queue.Enqueue("lens zoom stop");
+        _queue.Enqueue("lens zoom start +");
+        _queue.Enqueue("lens zoom stop");
+
+        _queue.PendingCount.Should().Be(3);
+    }
+
+    [Fact]
     public void Clear_Drops_Pending_Commands()
     {
         _queue.Enqueue("power");

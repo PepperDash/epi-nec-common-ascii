@@ -740,11 +740,12 @@ namespace EpiNecCommonAscii
 				StopPowerPollTimer();
 
 				// Without this, warming or cooling would stay set until the next comm monitor poll sees a
-				// change in power. An input switch queued in ExecuteSwitch is dropped: power on wasn't reported,
-				// and running it later, whenever power next comes on, would be a surprise.
+				// change in power. An input switch queued in ExecuteSwitch stays queued: a slow display still
+				// comes up on the selected input when the comm monitor's poll sees power on.
 				IsWarming = false;
 				IsCooling = false;
-				CancelPendingSwitch("power on not reported before the timeout");
+				if (_pendingSwitch != null)
+					this.LogWarning("ExecuteSwitch - Queued input switch will run when power on is reported");
 				PowerPoll();
 			}, null, timeoutMs, Timeout.Infinite);
 		}
@@ -782,6 +783,9 @@ namespace EpiNecCommonAscii
 		/// </summary>
 	    public override void PowerOff()
 	    {
+	        // Power off overrides an input switch still waiting for power on.
+	        CancelPendingSwitch("power off requested");
+
 	        // _powerPollTimer running indicates a power transition is already in progress
 	        if (!PowerIsOn || _powerPollTimer != null) return;
 

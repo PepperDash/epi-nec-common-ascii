@@ -59,7 +59,9 @@ public class InputMapTests
     [InlineData("rgbIn1", 2)]
     [InlineData("hdmi2", 3)]
     [InlineData("HDMIIN2", 3)]
-    [InlineData("hdbaset", 0)]
+    [InlineData("hdbaset", 4)]
+    [InlineData("hdbaseT1", 4)]
+    [InlineData("displayport1", 0)]
     [InlineData(null, 0)]
     public void GetInputNumber_Maps_Projector_And_Routing_Names(string? name, int expected)
     {
@@ -67,7 +69,7 @@ public class InputMapTests
     }
 
     [Fact]
-    public void Missing_Config_Exposes_All_Inputs()
+    public void Missing_Config_Exposes_Default_Inputs_Without_HdbaseT()
     {
         NecInputMap.GetExposedInputs(null!, new List<string>()).Select(i => i.Key)
             .Should().Equal("hdmiIn1", "hdmiIn2", "rgbIn1");
@@ -99,10 +101,10 @@ public class InputMapTests
     public void Unknown_Keys_Are_Reported_And_Skipped()
     {
         var unknown = new List<string>();
-        var exposed = NecInputMap.GetExposedInputs(new[] { Input("hdmiIn1"), Input("hdbaset"), null! }, unknown);
+        var exposed = NecInputMap.GetExposedInputs(new[] { Input("hdmiIn1"), Input("dvi1"), null! }, unknown);
 
         exposed.Select(i => i.Key).Should().Equal("hdmiIn1");
-        unknown.Should().Equal("hdbaset");
+        unknown.Should().Equal("dvi1");
     }
 
     [Fact]
@@ -130,5 +132,43 @@ public class InputMapTests
         var ports = new[] { "hdmiIn1", "rgbIn1" };
         NecInputMap.GetPortNumber(ports, 2).Should().Be(2);
         NecInputMap.GetPortNumber(ports, 3).Should().Be(0, "hdmi2 isn't exposed");
+    }
+}
+
+public class HdbaseTInputTests
+{
+    private static NecInputConfig Input(string key, string? name = null) => new() { Key = key, Name = name };
+
+    [Fact]
+    public void HdbaseT_Is_Exposed_Only_When_Listed()
+    {
+        NecInputMap.GetExposedInputs(null!, new List<string>()).Select(i => i.Key).Should().NotContain("hdbaseT1");
+
+        var unknown = new List<string>();
+        NecInputMap.GetExposedInputs(new[] { Input("hdbaseT1") }, unknown)
+            .Should().ContainSingle().Which.Should().Be(new KeyValuePair<string, string>("hdbaseT1", "HDBaseT"));
+        unknown.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void HdbaseT_Comes_After_Rgb_In_Port_Order()
+    {
+        NecInputMap.GetExposedInputs(new[] { Input("hdbaseT1"), Input("rgbIn1"), Input("hdmiIn1"), Input("hdmiIn2") }, new List<string>())
+            .Select(i => i.Key).Should().Equal("hdmiIn1", "hdmiIn2", "rgbIn1", "hdbaseT1");
+    }
+
+    [Fact]
+    public void HdbaseT_Port_Number_Follows_The_Exposed_Ports()
+    {
+        NecInputMap.GetPortNumber(new[] { "hdmiIn1", "hdmiIn2", "rgbIn1", "hdbaseT1" }, 4).Should().Be(4);
+        NecInputMap.GetPortNumber(new[] { "hdmiIn1", "hdmiIn2", "hdbaseT1" }, 4).Should().Be(3);
+        NecInputMap.GetPortNumber(new[] { "hdmiIn1", "hdmiIn2" }, 4).Should().Be(0, "hdbaseT1 isn't exposed");
+    }
+
+    [Fact]
+    public void HdbaseT_Label_Can_Be_Renamed()
+    {
+        NecInputMap.GetExposedInputs(new[] { Input("hdbaseT1", "Lectern") }, new List<string>())
+            .Should().ContainSingle().Which.Should().Be(new KeyValuePair<string, string>("hdbaseT1", "Lectern"));
     }
 }

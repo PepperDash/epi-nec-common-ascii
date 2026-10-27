@@ -209,8 +209,9 @@ By default the plugin exposes HDMI 1 (`hdmiIn1`), HDMI 2 (`hdmiIn2`) and RGB (`r
 }
 ```
 
-- When `inputs` is missing or empty, all three inputs are exposed.
-- Inputs keep the order HDMI 1, HDMI 2, RGB, whatever order the config lists them in.
+- When `inputs` is missing or empty, HDMI 1, HDMI 2 and RGB are exposed.
+- HDBaseT (`hdbaseT1`, sent to the projector as `input hdbaset`) is exposed only when `inputs` lists it.
+- Inputs keep the order HDMI 1, HDMI 2, RGB, HDBaseT, whatever order the config lists them in.
 - Unknown keys are logged as a warning and ignored.
 - If the projector switches to an input that isn't exposed (for example from its remote), no input shows as selected.
 

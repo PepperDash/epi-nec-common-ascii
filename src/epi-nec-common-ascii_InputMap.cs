@@ -16,12 +16,20 @@ namespace EpiNecCommonAscii
 		{
 			new KeyValuePair<string, string>(NecAsciiInputs.HdmiIn1, "HDMI 1"),
 			new KeyValuePair<string, string>(NecAsciiInputs.HdmiIn2, "HDMI 2"),
-			new KeyValuePair<string, string>(NecAsciiInputs.RgbIn1, "RGB")
+			new KeyValuePair<string, string>(NecAsciiInputs.RgbIn1, "RGB"),
+			new KeyValuePair<string, string>(NecAsciiInputs.HdbaseT1, "HDBaseT")
 		};
 
 		/// <summary>
-		/// The plugin's number for an input (hdmi1 = 1, computer = 2, hdmi2 = 3), from either the projector's
-		/// name or the routing name. 0 when unknown.
+		/// The inputs exposed when the config lists none. HDBaseT is exposed only when the config lists it.
+		/// </summary>
+		public static readonly IReadOnlyList<KeyValuePair<string, string>> DefaultInputs = AllInputs
+			.Where(i => i.Key != NecAsciiInputs.HdbaseT1)
+			.ToList();
+
+		/// <summary>
+		/// The plugin's number for an input (hdmi1 = 1, computer = 2, hdmi2 = 3, hdbaset = 4), from either the
+		/// projector's name or the routing name. 0 when unknown.
 		/// </summary>
 		public static int GetInputNumber(string name)
 		{
@@ -38,14 +46,18 @@ namespace EpiNecCommonAscii
 				case "computer":
 				case "rgbin1":
 					return 2;
+				case "hdbaset":
+				case "hdbaset1":
+					return 4;
 				default:
 					return 0;
 			}
 		}
 
 		/// <summary>
-		/// The inputs to expose, in the fixed order hdmiIn1, hdmiIn2, rgbIn1, with their labels. All of them when
-		/// the config lists none, or none it lists are known. Unknown keys are added to unknownKeys.
+		/// The inputs to expose, in the fixed order hdmiIn1, hdmiIn2, rgbIn1, hdbaseT1, with their labels.
+		/// DefaultInputs when the config lists none, or none it lists are known. Unknown keys are added to
+		/// unknownKeys.
 		/// </summary>
 		public static List<KeyValuePair<string, string>> GetExposedInputs(IEnumerable<NecInputConfig> configured, ICollection<string> unknownKeys)
 		{
@@ -62,7 +74,7 @@ namespace EpiNecCommonAscii
 			}
 
 			if (labels.Count == 0)
-				return AllInputs.ToList();
+				return DefaultInputs.ToList();
 
 			return AllInputs
 				.Where(i => labels.ContainsKey(i.Key))

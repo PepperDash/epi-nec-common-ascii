@@ -205,7 +205,8 @@ namespace EpiNecCommonAscii
                {RoutingPortNames.HdmiIn1,   "hdmi1"},
                {RoutingPortNames.HdmiIn2,   "hdmi2"},
                {RoutingPortNames.RgbIn,    "computer"},
-               {RoutingPortNames.RgbIn1,   "computer"}      
+               {RoutingPortNames.RgbIn1,   "computer"},
+               {NecAsciiInputs.HdbaseT1,   "hdbaset"}
 
 		    };
 			InitializeRoutingInputPorts(exposedInputs);
@@ -540,6 +541,8 @@ namespace EpiNecCommonAscii
 					return NecAsciiInputs.RgbIn1;
 				case 3:
 					return NecAsciiInputs.HdmiIn2;
+				case 4:
+					return NecAsciiInputs.HdbaseT1;
 				default:
 					return null;
 			}
@@ -559,7 +562,7 @@ namespace EpiNecCommonAscii
 		}
 
 		/// <summary>
-		/// The inputs to expose, in the fixed order hdmiIn1, hdmiIn2, rgbIn1, with their labels. All of them when
+		/// The inputs to expose, in the fixed order hdmiIn1, hdmiIn2, rgbIn1, hdbaseT1, with their labels. The defaults when
 		/// the config lists none.
 		/// </summary>
 		private List<KeyValuePair<string, string>> GetExposedInputs(List<NecInputConfig> configured)
@@ -571,7 +574,7 @@ namespace EpiNecCommonAscii
 				this.LogWarning("Ignoring unknown input '{0}' in config. Known inputs: {1}", key, string.Join(", ", NecInputMap.AllInputs.Select(i => i.Key)));
 
 			if (unknownKeys.Count > 0 && unknownKeys.Count == configured.Count(i => i != null))
-				this.LogWarning("No known inputs in config; exposing all inputs");
+				this.LogWarning("No known inputs in config; exposing the default inputs");
 
 			return exposed;
 		}
@@ -581,13 +584,15 @@ namespace EpiNecCommonAscii
 			InputFeedback = new List<BoolFeedback>();
 			foreach (var input in exposedInputs)
 			{
-				// Input keys match the routing port names (hdmiIn1, hdmiIn2, rgbIn1).
+				// Input keys match the routing port names (hdmiIn1, hdmiIn2, rgbIn1, hdbaseT1).
 				var portKey = input.Key;
-				var connectionType = portKey == RoutingPortNames.RgbIn1 ? eRoutingPortConnectionType.Rgb : eRoutingPortConnectionType.Hdmi;
+				var connectionType = portKey == RoutingPortNames.RgbIn1 ? eRoutingPortConnectionType.Rgb
+					: portKey == NecAsciiInputs.HdbaseT1 ? eRoutingPortConnectionType.HdBaseT
+					: eRoutingPortConnectionType.Hdmi;
 				AddRoutingInputPort(new RoutingInputPort(portKey, eRoutingSignalType.AudioVideo, connectionType, new Action(() => InputSelect(new NecAsciiCommand(portKey))), this), InputList[portKey]);
 
 				// Bridge joins select inputs by port position, so each feedback follows its port rather than
-				// the projector's input number (hdmi1 = 1, computer = 2, hdmi2 = 3).
+				// the projector's input number (hdmi1 = 1, computer = 2, hdmi2 = 3, hdbaset = 4).
 				InputFeedback.Add(new BoolFeedback(() => InputNumber != 0 && InputNumber == GetInputNumberFromName(portKey)));
 			}
 
@@ -724,6 +729,9 @@ namespace EpiNecCommonAscii
 							break;
 						case 3:
 							inputString = RoutingPortNames.HdmiIn2;
+							break;
+						case 4:
+							inputString = NecAsciiInputs.HdbaseT1;
 							break;
 					}
 					return inputString;
@@ -1011,6 +1019,7 @@ namespace EpiNecCommonAscii
 		public const string HdmiIn1 = "hdmiIn1";
 		public const string HdmiIn2 = "hdmiIn2";
 		public const string RgbIn1 = "rgbIn1";
+		public const string HdbaseT1 = "hdbaseT1";
 
 		private Dictionary<string, ISelectableItem> _items;
 		private string _currentItem;

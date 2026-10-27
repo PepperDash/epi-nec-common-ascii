@@ -222,7 +222,7 @@ Every 5 s the plugin queries `power`, then `shutter`, then `input` or `usage lig
 
 - The `shutter` query is skipped while power is off. Some displays (for example the PA804UL in deep standby) answer it with `>error:command - try 'help'`.
 - For displays with no shutter, set `"pollShutter": false` to never query it. It defaults to `true`.
-- All commands, polls included, go out at least 300 ms apart. Some displays (for example the PA804UL) reply in 16-byte chunks about 100 ms apart and join a partial command with the next one, so back-to-back commands can be merged or lost. A status query (`power`, `shutter`, `input`, `freeze`, `usage light hours`) is dropped if the same query is already waiting, so polling can't build a backlog that delays control commands. Commands still queued when the connection drops are discarded.
+- All commands, polls included, go out at least 300 ms apart. Some displays (for example the PA804UL) reply in 16-byte chunks about 100 ms apart and join a partial command with the next one, so back-to-back commands can be merged or lost. A status query (`power`, `shutter`, `input`, `freeze`, `usage light hours`) is dropped if the same query is already waiting with no control command queued after it, so polling can't build a backlog that delays control commands. Commands still queued when the connection drops are discarded.
 
 ### Plugin Bridge Configuration Object
 

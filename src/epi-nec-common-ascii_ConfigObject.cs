@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using PepperDash.Essentials.Core;
 using PepperDash.Essentials.Core.Config;
 
@@ -198,6 +200,40 @@ namespace EpiNecCommonAscii
         [JsonProperty("coolingTimeMs")]
         public uint CoolingTimeMs { get; set; }
 
+		/// <summary>
+		/// Inputs the device exposes, as routing ports and selectable items
+		/// </summary>
+		/// <remarks>
+		/// Known keys are hdmiIn1, hdmiIn2 and rgbIn1. Each entry is either a key or an object with a key and
+		/// a display name. When missing or empty, all inputs are exposed. Unknown keys are logged and ignored.
+		/// </remarks>
+		/// <example>
+		/// <code>
+		/// "properties": {
+		///		"inputs": ["hdmiIn1", { "key": "hdmiIn2", "name": "Laptop" }]
+		/// }
+		/// </code>
+		/// </example>
+		[JsonProperty("inputs")]
+		public List<NecInputConfig> Inputs { get; set; }
+
+		/// <summary>
+		/// Whether the poll queries the shutter (video mute) state
+		/// </summary>
+		/// <remarks>
+		/// Defaults to true. Set false for displays with no shutter, which answer the query with
+		/// "error:command". The shutter is never polled while power is off.
+		/// </remarks>
+		/// <example>
+		/// <code>
+		/// "properties": {
+		///		"pollShutter": false
+		/// }
+		/// </code>
+		/// </example>
+		[JsonProperty("pollShutter")]
+		public bool PollShutter { get; set; } = true;
+
 
 		/// <summary>
 		/// Example dictionary of objects
@@ -243,6 +279,56 @@ namespace EpiNecCommonAscii
 		}
 
 
+	}
+
+	/// <summary>
+	/// An input to expose, written in config as a key string or as { "key": ..., "name": ... }
+	/// </summary>
+	[JsonConverter(typeof(NecInputConfigConverter))]
+	public class NecInputConfig
+	{
+		/// <summary>
+		/// Input key: hdmiIn1, hdmiIn2 or rgbIn1
+		/// </summary>
+		[JsonProperty("key")]
+		public string Key { get; set; }
+
+		/// <summary>
+		/// Optional display name; the default label is used when empty
+		/// </summary>
+		[JsonProperty("name")]
+		public string Name { get; set; }
+	}
+
+	/// <summary>
+	/// Reads a <see cref="NecInputConfig"/> from either a key string or an object
+	/// </summary>
+	public class NecInputConfigConverter : JsonConverter
+	{
+		public override bool CanConvert(Type objectType) => objectType == typeof(NecInputConfig);
+
+		public override bool CanWrite => false;
+
+		public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+		{
+			if (reader.TokenType == JsonToken.Null)
+				return null;
+
+			if (reader.TokenType == JsonToken.String)
+				return new NecInputConfig { Key = (string)reader.Value };
+
+			var obj = JObject.Load(reader);
+			return new NecInputConfig
+			{
+				Key = (string)obj["key"],
+				Name = (string)obj["name"]
+			};
+		}
+
+		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+		{
+			throw new NotSupportedException();
+		}
 	}
 
 	/// <summary>

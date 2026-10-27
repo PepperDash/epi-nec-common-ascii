@@ -204,8 +204,8 @@ namespace EpiNecCommonAscii
 		/// Inputs the device exposes, as routing ports and selectable items
 		/// </summary>
 		/// <remarks>
-		/// Known keys are hdmiIn1, hdmiIn2 and rgbIn1. Each entry is either a key or an object with a key and
-		/// a display name. When missing or empty, all inputs are exposed. Unknown keys are logged and ignored.
+		/// Known keys are hdmiIn1, hdmiIn2, rgbIn1 and hdbaseT1. Each entry is either a key or an object with a key and
+		/// a display name. When missing or empty, hdmiIn1, hdmiIn2 and rgbIn1 are exposed. Unknown keys are logged and ignored.
 		/// </remarks>
 		/// <example>
 		/// <code>

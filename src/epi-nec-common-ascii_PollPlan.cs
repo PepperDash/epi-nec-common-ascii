@@ -8,7 +8,7 @@ namespace EpiNecCommonAscii
 	public static class NecPollPlan
 	{
 		/// <summary>
-		/// Number of poll states; the input and lamp hours queries each go out once per cycle.
+		/// Number of poll states; input goes out twice per cycle and lamp hours once.
 		/// </summary>
 		public const int StateCount = 4;
 
@@ -28,10 +28,13 @@ namespace EpiNecCommonAscii
 
 			switch (pollState)
 			{
+				// Input every other tick (10 s at the default 5 s poll), so a change from the display's remote,
+				// or a reply missed to "error:busy", shows up sooner.
 				case 1:
+				case 3:
 					commands.Add("input");
 					break;
-				case 3:
+				case 2:
 					commands.Add("usage light hours");
 					break;
 			}

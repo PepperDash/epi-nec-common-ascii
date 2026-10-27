@@ -83,6 +83,8 @@ namespace EpiNecCommonAscii
 		// Latest input switch not yet made: runs at once when power is on, otherwise when power on is reported.
 		private Action _pendingSwitch;
 		private readonly object _switchLock = new object();
+		// An input selected while it already showed as selected, waiting for the next input reply to confirm it.
+		private string _inputToConfirm;
 
         private bool _isWarming;
         public bool IsWarming
@@ -190,12 +192,8 @@ namespace EpiNecCommonAscii
 
 			_inputs = new NecAsciiInputs(exposedInputs);
 			//When the CurrentItemChanged event is invoked, it calls the InputSelect method with the CurrentItem string
-			_inputs.CurrentItemChanged += (sender, args) =>
-			{
-				// CurrentItem is null when feedback cleared the selection; there is nothing to select.
-				if (!string.IsNullOrEmpty(_inputs.CurrentItem))
-					InputSelect(new NecAsciiCommand(_inputs.CurrentItem));
-			};
+			// Only selections from a user or the API switch the display; feedback changes don't.
+			_inputs.ItemSelected += (sender, key) => InputSelect(new NecAsciiCommand(key));
 
 			// TODO [ ] Update the constructor as needed for the plugin device being developed
 
@@ -486,6 +484,14 @@ namespace EpiNecCommonAscii
 			this.LogVerbose("UpdateInput {0}", response);
 			InputNumber = GetInputNumberFromName(response);
 			SyncSelectableInputs();
+
+			// An input selected while it showed as selected: switch now if the display reports another one.
+			var toConfirm = System.Threading.Interlocked.Exchange(ref _inputToConfirm, null);
+			if (toConfirm != null && GetInputNumberFromName(toConfirm) != InputNumber)
+			{
+				this.LogInformation("InputSelect - display reports '{0}', not the selected '{1}'; switching", response, toConfirm);
+				InputSelect(new NecAsciiCommand(toConfirm));
+			}
 	    }
 	
 		public void SendText(string text)
@@ -622,8 +628,19 @@ namespace EpiNecCommonAscii
 
 	        if (commandString == string.Empty ||!InputList.ContainsKey(commandString)) { this.LogVerbose("InputSelect - command '{0}' is empty or not in InputList, returning", commandString); return; }
 
-            //Input already selected, prevent resend which will blink display for a second
-            if (InputNumber == GetInputNumberFromName(commandString)) { this.LogVerbose("InputSelect - input '{0}' already selected (InputNumber: {1}), skipping", commandString, InputNumber); return; }
+            // Input already shows as selected. Resending would blink the display for a second, but the feedback can
+            // be stale (input polls every 10 s, and some displays answer "error:busy" just after an input change).
+            // Query the input instead; UpdateInput sends the switch if the display is on another one.
+            if (InputNumber == GetInputNumberFromName(commandString))
+            {
+                this.LogInformation("InputSelect - input '{0}' already shows as selected (InputNumber: {1}); querying input to confirm", commandString, InputNumber);
+                System.Threading.Interlocked.Exchange(ref _inputToConfirm, commandString);
+                InputPoll();
+                return;
+            }
+
+            // A newer selection replaces one waiting to be confirmed.
+            System.Threading.Interlocked.Exchange(ref _inputToConfirm, null);
 
             this.LogVerbose("InputSelect - Sending 'input {0}' to device", InputList[commandString]);
             SendText(string.Format("input {0}",InputList[commandString]));
@@ -1030,17 +1047,36 @@ namespace EpiNecCommonAscii
 			_items = new Dictionary<string, ISelectableItem>(StringComparer.OrdinalIgnoreCase);
 			foreach (var input in inputs)
 			{
-				_items[input.Key] = new NecAsciiSelectableItem(input.Key, input.Value);
+				var key = input.Key;
+				var item = new NecAsciiSelectableItem(key, input.Value);
+				item.ItemUpdated += (sender, args) =>
+				{
+					if (_isApplyingFeedback) return; // prevents feedback from looping back into InputSelect
+					if (item.IsSelected)
+						SelectItem(key);
+				};
+				// Selecting the item that already shows as selected still asks for it: the feedback may be stale,
+				// for example while the display answers "error:busy" just after an input change from its remote.
+				item.Reselected += (sender, args) => SelectItem(key);
+				_items[key] = item;
+			}
+		}
+
+		/// <summary>
+		/// Raised when a user or the API selects an input, including the one already shown as selected.
+		/// Not raised for feedback from the display.
+		/// </summary>
+		public event EventHandler<string> ItemSelected;
+
+		private void SelectItem(string key)
+		{
+			if (!string.Equals(_currentItem, key, StringComparison.OrdinalIgnoreCase))
+			{
+				_currentItem = key;
+				CurrentItemChanged?.Invoke(this, EventArgs.Empty);
 			}
 
-			 foreach (var item in _items) //This creates delegates for each item that fire when item.Value.ItemUpdated is invoked
-				{
-					item.Value.ItemUpdated += (sender, args) => {
-						if (_isApplyingFeedback) return; // prevents feedback from looping back into InputSelect, no need for guard
-						if ((sender as ISelectableItem)?.IsSelected == true)
-							CurrentItem = item.Key;
-					};
-				}
+			ItemSelected?.Invoke(this, key);
 		}
 
         public Dictionary<string, ISelectableItem> Items
@@ -1058,13 +1094,12 @@ namespace EpiNecCommonAscii
             get => _currentItem;
             set
             {
-                if (string.IsNullOrEmpty(value) || !_items.ContainsKey(value) || string.Equals(_currentItem, value, StringComparison.OrdinalIgnoreCase))
+                if (string.IsNullOrEmpty(value) || !_items.ContainsKey(value))
                 {
                     return;
                 }
 
-                _currentItem = value;
-                CurrentItemChanged?.Invoke(this, EventArgs.Empty);
+                SelectItem(value);
             }
         }
 
@@ -1158,7 +1193,21 @@ namespace EpiNecCommonAscii
 
 			public event EventHandler ItemUpdated;
 
-			public void Select() => IsSelected = true;
+			/// <summary>
+			/// Raised by Select() when the item is already selected
+			/// </summary>
+			public event EventHandler Reselected;
+
+			public void Select()
+			{
+				if (_isSelected)
+				{
+					Reselected?.Invoke(this, EventArgs.Empty);
+					return;
+				}
+
+				IsSelected = true;
+			}
 		}
     }
 }

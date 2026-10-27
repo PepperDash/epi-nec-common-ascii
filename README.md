@@ -214,12 +214,13 @@ By default the plugin exposes HDMI 1 (`hdmiIn1`), HDMI 2 (`hdmiIn2`) and RGB (`r
 - Inputs keep the order HDMI 1, HDMI 2, RGB, HDBaseT, whatever order the config lists them in.
 - Unknown keys are logged as a warning and ignored.
 - If the projector switches to an input that isn't exposed (for example from its remote), no input shows as selected.
+- Selecting the input that already shows as selected queries `input` instead of resending it, which would blink the display. If the projector reports another input (its remote changed it, or the last reply was `>error:busy`), the plugin then switches it.
 
 The bridge's input select joins (digital `InputSelectOffset` and analog `InputSelect`) follow the exposed inputs in that order. Join 1 is the first exposed input, and the feedback on each join matches the input that join selects.
 
 #### Polling
 
-Every 5 s the plugin queries `power`, then `shutter`, then `input` or `usage light hours` on alternate ticks.
+Every 5 s the plugin queries `power`, then `shutter`, then on alternate ticks `input` (every 10 s), with `usage light hours` every 20 s on a tick in between.
 
 - The `shutter` query is skipped while power is off. Some displays (for example the PA804UL in deep standby) answer it with `>error:command - try 'help'`.
 - For displays with no shutter, set `"pollShutter": false` to never query it. It defaults to `true`.

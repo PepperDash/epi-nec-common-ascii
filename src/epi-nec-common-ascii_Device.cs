@@ -91,6 +91,8 @@ namespace EpiNecCommonAscii
 		private DateTime _inputToConfirmUntil;
 		private bool _inputReplySinceConfirmQuery;
 		private int _inputConfirmMatches;
+		// A reply showing another input before this is ignored: it likely answers a query sent before the switch.
+		private DateTime _inputLastSentUntil;
 		private CTimer _inputConfirmTimer;
 		private const int InputConfirmWindowMs = 10000;
 		private const int InputConfirmRetryMs = 1000;
@@ -496,31 +498,40 @@ namespace EpiNecCommonAscii
 			// Under _inputLock with InputSelect, so a confirmation can't send an input after a newer selection.
 			lock (_inputLock)
 			{
-				InputNumber = GetInputNumberFromName(response);
-				SyncSelectableInputs();
+				var reported = GetInputNumberFromName(response);
 
-				if (_inputToConfirm == null)
-					return;
-
-				_inputReplySinceConfirmQuery = true;
-
-				if (DateTime.UtcNow > _inputToConfirmUntil)
+				if (_inputToConfirm != null)
 				{
-					EndInputConfirmation();
-					return;
-				}
+					_inputReplySinceConfirmQuery = true;
 
-				if (GetInputNumberFromName(_inputToConfirm) == InputNumber)
-				{
-					// The first match may answer a query sent before the selection; the second confirms it.
-					if (++_inputConfirmMatches >= 2)
+					if (DateTime.UtcNow > _inputToConfirmUntil)
+					{
 						EndInputConfirmation();
-					return;
+					}
+					else if (GetInputNumberFromName(_inputToConfirm) == reported)
+					{
+						// The first match may answer a query sent before the selection; the second confirms it.
+						if (++_inputConfirmMatches >= 2)
+							EndInputConfirmation();
+					}
+					else if (DateTime.UtcNow < _inputLastSentUntil)
+					{
+						// Too soon after the switch went out: the reply likely answers a query sent before it. Ignored,
+						// feedback included, so the selection doesn't flicker or get resent twice.
+						this.LogVerbose("InputSelect - ignoring '{0}' reply just after sending '{1}'", response, _inputToConfirm);
+						return;
+					}
+					else
+					{
+						this.LogInformation("InputSelect - display reports '{0}', not the selected '{1}'; sending it again", response, _inputToConfirm);
+						_inputConfirmMatches = 0;
+						SendInput(_inputToConfirm);
+						return;
+					}
 				}
 
-				this.LogInformation("InputSelect - display reports '{0}', not the selected '{1}'; sending it again", response, _inputToConfirm);
-				_inputConfirmMatches = 0;
-				SendInput(_inputToConfirm);
+				InputNumber = reported;
+				SyncSelectableInputs();
 			}
 	    }
 
@@ -529,6 +540,7 @@ namespace EpiNecCommonAscii
 		{
 			this.LogVerbose("InputSelect - Sending 'input {0}' to device", InputList[key]);
 			SendText(string.Format("input {0}", InputList[key]));
+			_inputLastSentUntil = DateTime.UtcNow.AddMilliseconds(InputConfirmRetryMs);
 			InputNumber = GetInputNumberFromName(key);
 			SyncSelectableInputs();
 		}
